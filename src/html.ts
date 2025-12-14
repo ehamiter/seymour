@@ -56,10 +56,10 @@ export function renderHome(params: {
 
       header {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
         gap: 1rem;
-        padding: 1rem 1.5rem;
+        padding: 0.55rem 1.5rem;
         position: sticky;
         top: 0;
         background: rgba(247, 247, 251, 0.98);
@@ -71,22 +71,33 @@ export function renderHome(params: {
       .brand {
         display: inline-flex;
         gap: 0.75rem;
-        align-items: center;
+        align-items: flex-start;
       }
 
       .brand img {
-        width: 64px;
-        height: 64px;
+        width: 56px;
+        height: 56px;
         object-fit: contain;
-        border-radius: 14px;
-        box-shadow: 0 10px 40px rgba(15, 23, 42, 0.16);
-        background: linear-gradient(135deg, rgba(35, 79, 158, 0.1), rgba(15, 23, 42, 0.05));
+        border-radius: 8px;
+        box-shadow: none;
+        background: transparent;
+        margin-top: -2px;
+      }
+
+      .brand-copy {
+        display: grid;
+        gap: 0.1rem;
+        margin-top: 3px;
       }
 
       h1 {
         margin: 0;
         font-size: 1.2rem;
         letter-spacing: 0.01em;
+      }
+
+      .brand p {
+        margin: 0.1rem 0 0;
       }
 
       .layout {
@@ -598,7 +609,7 @@ export function renderHome(params: {
     <header>
       <div class="brand">
         <img src="/seymour.png" alt="Seymour logo" loading="lazy" />
-        <div>
+        <div class="brand-copy">
           <h1><a href="/" style="color: inherit; text-decoration: none;">Seymour Reader</a></h1>
           <p class="muted">Press <kbd>?</kbd> to see keyboard shortcuts.</p>
         </div>
