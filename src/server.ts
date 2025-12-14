@@ -27,12 +27,24 @@ const server = Bun.serve({
 console.log(`Seymour running on http://localhost:${server.port}`);
 
 async function route(req: Request) {
+  const url = new URL(req.url);
+
+  if ((req.method === "GET" || req.method === "HEAD") && url.pathname === "/favicon.ico") {
+    const icon = Bun.file("favicon.ico");
+    if (await icon.exists()) {
+      return new Response(req.method === "HEAD" ? null : icon, {
+        headers: {
+          "Content-Type": "image/x-icon",
+          "Cache-Control": "public, max-age=604800",
+        },
+      });
+    }
+  }
+
   if (PASSWORD) {
     const auth = checkAuth(req, PASSWORD);
     if (auth) return auth;
   }
-
-  const url = new URL(req.url);
 
   if (req.method === "GET" && url.pathname === "/") {
     return renderHomePage(url);

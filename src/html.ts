@@ -26,6 +26,7 @@ export function renderHome(params: {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/favicon.ico" />
     <title>Seymour Reader</title>
     <style>
       :root {
@@ -268,6 +269,7 @@ export function renderHome(params: {
         outline: 0;
         position: relative;
         z-index: 0;
+        scroll-margin-top: 7rem;
       }
 
       .entry:focus-visible {
@@ -683,7 +685,7 @@ export function renderHome(params: {
           if (!target) return;
           pointer = idx;
           target.focus({ preventScroll: true });
-          target.scrollIntoView({ block: "center", behavior: "smooth" });
+          target.scrollIntoView({ block: "start", behavior: "smooth" });
         };
 
         const markRead = (entry, silent) => {
