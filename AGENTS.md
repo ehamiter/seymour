@@ -26,6 +26,9 @@
 ## Commit & Pull Request Guidelines
 - Do not do any git operations. The user will handle this.
 
+## Post-operation Guidelines
+- After any significant amount of work has been done, update `README.md` to keep the end-users informed of the current state of the app.
+
 ## Security & Configuration Tips
 - Set `APP_PASSWORD` in any shared deployment; avoid committing real DB files or secrets.
 - Tune fetch cadence via env vars instead of code edits; be mindful of remote servers’ rate limits.

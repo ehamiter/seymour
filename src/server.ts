@@ -29,12 +29,17 @@ console.log(`Seymour running on http://localhost:${server.port}`);
 async function route(req: Request) {
   const url = new URL(req.url);
 
-  if ((req.method === "GET" || req.method === "HEAD") && url.pathname === "/favicon.ico") {
-    const icon = Bun.file("favicon.ico");
-    if (await icon.exists()) {
-      return new Response(req.method === "HEAD" ? null : icon, {
+  const staticAssets: Record<string, { path: string; type: string }> = {
+    "/favicon.ico": { path: "static/favicon.ico", type: "image/x-icon" },
+    "/seymour.png": { path: "static/seymour.png", type: "image/png" },
+  };
+  const asset = staticAssets[url.pathname];
+  if ((req.method === "GET" || req.method === "HEAD") && asset) {
+    const file = Bun.file(asset.path);
+    if (await file.exists()) {
+      return new Response(req.method === "HEAD" ? null : file, {
         headers: {
-          "Content-Type": "image/x-icon",
+          "Content-Type": asset.type,
           "Cache-Control": "public, max-age=604800",
         },
       });

@@ -165,7 +165,7 @@ async function fetchAndStore(
   }
 }
 
-function parseRetryAfter(value: string | null): number | null {
+export function parseRetryAfter(value: string | null): number | null {
   if (!value) return null;
   const trimmed = value.trim();
   if (/^\d+$/.test(trimmed)) {
@@ -177,7 +177,7 @@ function parseRetryAfter(value: string | null): number | null {
   return delta > 0 ? delta : null;
 }
 
-async function fetchWithTimeout(url: string, init: RequestInit, timeout: number) {
+export async function fetchWithTimeout(url: string, init: RequestInit, timeout: number) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
   try {
@@ -186,3 +186,7 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeout: number)
     clearTimeout(timer);
   }
 }
+
+export const __test__ = {
+  fetchAndStore,
+};

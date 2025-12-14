@@ -55,9 +55,10 @@ export function renderHome(params: {
       }
 
       header {
-        display: grid;
-        grid-template-columns: 1fr auto auto;
-        gap: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
         padding: 1rem 1.5rem;
         position: sticky;
         top: 0;
@@ -67,9 +68,24 @@ export function renderHome(params: {
         z-index: 20;
       }
 
+      .brand {
+        display: inline-flex;
+        gap: 0.75rem;
+        align-items: center;
+      }
+
+      .brand img {
+        width: 64px;
+        height: 64px;
+        object-fit: contain;
+        border-radius: 14px;
+        box-shadow: 0 10px 40px rgba(15, 23, 42, 0.16);
+        background: linear-gradient(135deg, rgba(35, 79, 158, 0.1), rgba(15, 23, 42, 0.05));
+      }
+
       h1 {
         margin: 0;
-        font-size: 1.15rem;
+        font-size: 1.2rem;
         letter-spacing: 0.01em;
       }
 
@@ -426,11 +442,61 @@ export function renderHome(params: {
         gap: 0.35rem;
       }
 
-      .topbar-actions {
-        display: inline-flex;
+      .text-input {
+        min-width: 18rem;
+        padding: 0.4rem 0.6rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+      }
+
+      .settings-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.38);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        z-index: 200;
+      }
+
+      .settings-overlay[hidden] {
+        display: none;
+      }
+
+      .settings-panel {
+        width: min(640px, 92vw);
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 1rem 1.25rem;
+        display: grid;
+        gap: 0.9rem;
+      }
+
+      .settings-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.5rem;
+      }
+
+      .settings-body {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .settings-input-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
         gap: 0.5rem;
         align-items: center;
-        flex-wrap: wrap;
+      }
+
+      .settings-footer {
+        display: flex;
+        justify-content: flex-end;
       }
 
       .muted {
@@ -508,8 +574,15 @@ export function renderHome(params: {
 
       @media (max-width: 980px) {
         header {
-          grid-template-columns: 1fr;
+          align-items: flex-start;
+          flex-direction: column;
           position: static;
+        }
+        .brand {
+          width: 100%;
+        }
+        .settings-input-row {
+          grid-template-columns: 1fr;
         }
         .layout {
           grid-template-columns: 1fr;
@@ -523,22 +596,50 @@ export function renderHome(params: {
   </head>
   <body>
     <header>
-      <div>
-        <h1><a href="/" style="color: inherit; text-decoration: none;">Seymour Reader</a></h1>
-        <p class="muted">Press <kbd>?</kbd> to see keyboard shortcuts.</p>
+      <div class="brand">
+        <img src="/seymour.png" alt="Seymour logo" loading="lazy" />
+        <div>
+          <h1><a href="/" style="color: inherit; text-decoration: none;">Seymour Reader</a></h1>
+          <p class="muted">Press <kbd>?</kbd> to see keyboard shortcuts.</p>
+        </div>
       </div>
-      <form class="topbar-actions" method="post" action="/feeds" enctype="multipart/form-data">
-        <input type="url" name="url" placeholder="Add feed URL" style="min-width: 18rem; padding: 0.4rem 0.6rem; border-radius: 8px; border: 1px solid var(--border);" aria-label="Feed URL" />
-        <button type="submit" class="primary">Subscribe</button>
-        <label class="file-button">
-          Import OPML
-          <input type="file" name="opml" accept=".opml,text/xml,application/xml" />
-        </label>
-      </form>
-      <form class="topbar-actions" method="post" action="/refresh">
-        <button type="submit" title="Fetch all feeds">Refresh all</button>
-      </form>
+      <button type="button" data-open-settings aria-label="Open settings">Settings</button>
     </header>
+    <div class="settings-overlay" data-settings-overlay hidden>
+      <div class="settings-panel" role="dialog" aria-modal="true" aria-label="Settings" tabindex="-1">
+        <div class="settings-header">
+          <div>
+            <strong>Settings</strong>
+            <p class="muted" style="margin: 0.15rem 0 0;">Manage feeds, imports, and refreshes.</p>
+          </div>
+          <button type="button" data-close-settings aria-label="Close settings">Close</button>
+        </div>
+        <div class="settings-body">
+          <form class="stack" method="post" action="/feeds" enctype="multipart/form-data">
+            <div class="stack">
+              <label class="stack">
+                <span>Subscribe to a feed</span>
+                <div class="settings-input-row">
+                  <input type="url" name="url" class="text-input" placeholder="Add feed URL" aria-label="Feed URL" />
+                  <button type="submit" class="primary">Subscribe</button>
+                </div>
+              </label>
+              <div class="stack">
+                <span>Import OPML</span>
+                <label class="file-button">
+                  Choose file
+                  <input type="file" name="opml" accept=".opml,text/xml,application/xml" />
+                </label>
+                <p class="muted" style="margin: 0;">We will add any new feeds we find.</p>
+              </div>
+            </div>
+          </form>
+          <form class="settings-footer" method="post" action="/refresh">
+            <button type="submit" title="Fetch all feeds">Refresh all</button>
+          </form>
+        </div>
+      </div>
+    </div>
     <div class="shortcut-overlay" data-shortcut-overlay hidden>
       <div class="shortcut-panel" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" tabindex="-1">
         <div class="shortcut-header">
@@ -632,18 +733,42 @@ export function renderHome(params: {
           });
         };
 
+        const settingsOverlay = document.querySelector("[data-settings-overlay]");
+        const settingsPanel =
+          settingsOverlay instanceof HTMLElement ? settingsOverlay.querySelector(".settings-panel") : null;
+        const openSettingsButton = document.querySelector("[data-open-settings]");
+        const closeSettingsButton =
+          settingsOverlay instanceof HTMLElement ? settingsOverlay.querySelector("[data-close-settings]") : null;
+        const feedUrlInput =
+          settingsOverlay instanceof HTMLElement ? settingsOverlay.querySelector('input[name="url"]') : null;
+
         const shortcutsOverlay = document.querySelector("[data-shortcut-overlay]");
         const shortcutsPanel = shortcutsOverlay instanceof HTMLElement ? shortcutsOverlay.querySelector(".shortcut-panel") : null;
         const closeShortcutsButton =
           shortcutsOverlay instanceof HTMLElement ? shortcutsOverlay.querySelector("[data-close-shortcuts]") : null;
 
+        const settingsVisible = () =>
+          settingsOverlay instanceof HTMLElement && !settingsOverlay.hasAttribute("hidden");
+
         const shortcutsVisible = () =>
           shortcutsOverlay instanceof HTMLElement && !shortcutsOverlay.hasAttribute("hidden");
+
+        const openSettings = () => {
+          if (!(settingsOverlay instanceof HTMLElement)) return;
+          settingsOverlay.removeAttribute("hidden");
+          if (settingsPanel instanceof HTMLElement) settingsPanel.focus({ preventScroll: true });
+          if (feedUrlInput instanceof HTMLElement) feedUrlInput.focus({ preventScroll: true });
+        };
 
         const openShortcuts = () => {
           if (!(shortcutsOverlay instanceof HTMLElement)) return;
           shortcutsOverlay.removeAttribute("hidden");
           if (shortcutsPanel instanceof HTMLElement) shortcutsPanel.focus({ preventScroll: true });
+        };
+
+        const closeSettings = () => {
+          if (!(settingsOverlay instanceof HTMLElement)) return;
+          settingsOverlay.setAttribute("hidden", "true");
         };
 
         const closeShortcuts = () => {
@@ -661,6 +786,22 @@ export function renderHome(params: {
 
         if (closeShortcutsButton instanceof HTMLElement) {
           closeShortcutsButton.addEventListener("click", () => closeShortcuts());
+        }
+
+        if (openSettingsButton instanceof HTMLElement) {
+          openSettingsButton.addEventListener("click", () => openSettings());
+        }
+
+        if (closeSettingsButton instanceof HTMLElement) {
+          closeSettingsButton.addEventListener("click", () => closeSettings());
+        }
+
+        if (settingsOverlay instanceof HTMLElement) {
+          settingsOverlay.addEventListener("click", (event) => {
+            if (event.target === settingsOverlay) {
+              closeSettings();
+            }
+          });
         }
 
         if (shortcutsOverlay instanceof HTMLElement) {
@@ -732,6 +873,14 @@ export function renderHome(params: {
         entries.forEach((el) => io.observe(el));
 
         window.addEventListener("keydown", (event) => {
+          if (settingsVisible()) {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              closeSettings();
+            }
+            return;
+          }
+
           if (shortcutsVisible()) {
             if (event.key === "Escape" || event.key === "?") {
               event.preventDefault();
@@ -769,8 +918,8 @@ export function renderHome(params: {
             }
           } else if (event.key === "a") {
             event.preventDefault();
-            const input = document.querySelector('input[name="url"]');
-            if (input instanceof HTMLElement) input.focus();
+            if (!settingsVisible()) openSettings();
+            if (feedUrlInput instanceof HTMLElement) feedUrlInput.focus({ preventScroll: true });
           } else if (event.key === "v") {
             event.preventDefault();
             const entry = entries[pointer];
@@ -1084,7 +1233,7 @@ function decodeHtmlEntities(input: string) {
   });
 }
 
-function sanitizeSummaryHtml(html: string) {
+export function sanitizeSummaryHtml(html: string) {
   if (!html) return "";
   let cleaned = decodeHtmlEntities(html);
   cleaned = cleaned.replace(/<\s*(script|style)[^>]*>[\s\S]*?<\/\s*\1>/gi, "");

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="seymour.png" alt="Seymour logo" width="160" />
+  <img src="static/seymour.png" alt="Seymour logo" width="160" />
 </p>
 
 # Seymour
@@ -34,7 +34,7 @@ bun dev
 bun start
 ```
 
-Visit `http://localhost:3000` (or your configured `PORT`). Use the form to add a feed URL or upload an OPML file. Click entries to open them; use the buttons to mark items or refresh.
+Visit `http://localhost:3000` (or your configured `PORT`). Open Settings to add a feed URL or upload an OPML file. Click entries to open them; use the buttons to mark items or refresh.
 
 ## Configuration
 Environment variables:
