@@ -20,7 +20,7 @@
 
 ## Testing Guidelines
 - No automated tests yet; smoke-test via `bun dev`, load `/`, and add a feed to verify fetching/rendering.
-- When touching parsing or fetch flows, test with sample feeds (store temporary files under `data/`) and confirm entries appear on `/`.
+- When touching parsing or fetch flows, test with the Hacker News front page feed `https://hnrss.org/frontpage` (store temporary files under `data/`) and confirm entries appear on `/`.
 - If adding tests, co-locate them (e.g., `src/feed-parser.test.ts`) and add a `bun test` script before merging.
 
 ## Commit & Pull Request Guidelines

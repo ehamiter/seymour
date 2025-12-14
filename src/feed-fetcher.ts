@@ -12,7 +12,7 @@ const DEFAULT_INTERVAL_MS = Number(process.env.FETCH_INTERVAL_MS ?? 30 * 60 * 10
 const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS ?? 15000);
 const USER_AGENT =
   process.env.HTTP_USER_AGENT ??
-  "Seymour/0.1 (+https://github.com/you/seymour; respectful fetcher)";
+  "Seymour/0.1 (+https://github.com/ehamiter/seymour; respectful rss feed fetcher)";
 const RETRY_AFTER_FALLBACK_MS = 2 * 60 * 60 * 1000; // Slow down hard on 429s when no hint is provided.
 const ERROR_BACKOFF_MS = 60 * 60 * 1000; // Avoid hammering a failing feed.
 const NO_VALIDATOR_BACKOFF_MS = 90 * 60 * 1000; // Slow feeds that never send ETag/Last-Modified.
