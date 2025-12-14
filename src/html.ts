@@ -435,6 +435,75 @@ export function renderHome(params: {
         color: var(--muted);
       }
 
+      kbd {
+        background: #f1f4fb;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 0.15rem 0.45rem;
+        font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+        font-size: 0.95rem;
+        box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.08);
+      }
+
+      .shortcut-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.38);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        z-index: 200;
+      }
+
+      .shortcut-overlay[hidden] {
+        display: none;
+      }
+
+      .shortcut-panel {
+        width: min(520px, 90vw);
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 1rem 1.25rem;
+        display: grid;
+        gap: 0.8rem;
+      }
+
+      .shortcut-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+      }
+
+      .shortcut-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 0.45rem;
+      }
+
+      .shortcut-row {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.65rem;
+        align-items: center;
+      }
+
+      .shortcut-keys {
+        display: inline-flex;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+      }
+
+      .shortcut-hint {
+        margin: 0;
+        color: var(--muted);
+      }
+
       @media (max-width: 980px) {
         header {
           grid-template-columns: 1fr;
@@ -454,7 +523,7 @@ export function renderHome(params: {
     <header>
       <div>
         <h1><a href="/" style="color: inherit; text-decoration: none;">Seymour Reader</a></h1>
-        <p class="muted">Keyboard shortcuts: j/k to move, m to mark read, shift+m to mark above, r to refresh</p>
+        <p class="muted">Press <kbd>?</kbd> to see keyboard shortcuts.</p>
       </div>
       <form class="topbar-actions" method="post" action="/feeds" enctype="multipart/form-data">
         <input type="url" name="url" placeholder="Add feed URL" style="min-width: 18rem; padding: 0.4rem 0.6rem; border-radius: 8px; border: 1px solid var(--border);" aria-label="Feed URL" />
@@ -468,6 +537,50 @@ export function renderHome(params: {
         <button type="submit" title="Fetch all feeds">Refresh all</button>
       </form>
     </header>
+    <div class="shortcut-overlay" data-shortcut-overlay hidden>
+      <div class="shortcut-panel" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" tabindex="-1">
+        <div class="shortcut-header">
+          <strong>Keyboard shortcuts</strong>
+          <button type="button" data-close-shortcuts aria-label="Close keyboard shortcuts">Close</button>
+        </div>
+        <p class="muted" style="margin: 0;">Quick commands to stay in flow.</p>
+        <ul class="shortcut-list">
+          <li class="shortcut-row">
+            <span class="shortcut-keys"><kbd>j</kbd></span>
+            <span>Next item</span>
+          </li>
+          <li class="shortcut-row">
+            <span class="shortcut-keys"><kbd>k</kbd></span>
+            <span>Previous item</span>
+          </li>
+          <li class="shortcut-row">
+            <span class="shortcut-keys"><kbd>m</kbd></span>
+            <span>Mark current read</span>
+          </li>
+          <li class="shortcut-row">
+            <span class="shortcut-keys"><kbd>shift</kbd><kbd>m</kbd></span>
+            <span>Mark current and above read</span>
+          </li>
+          <li class="shortcut-row">
+            <span class="shortcut-keys"><kbd>v</kbd></span>
+            <span>Open current link in a new tab</span>
+          </li>
+          <li class="shortcut-row">
+            <span class="shortcut-keys"><kbd>r</kbd></span>
+            <span>Refresh all feeds</span>
+          </li>
+          <li class="shortcut-row">
+            <span class="shortcut-keys"><kbd>a</kbd></span>
+            <span>Focus "Add feed URL"</span>
+          </li>
+          <li class="shortcut-row">
+            <span class="shortcut-keys"><kbd>?</kbd></span>
+            <span>Toggle this shortcuts guide</span>
+          </li>
+        </ul>
+        <p class="shortcut-hint">Press <kbd>Esc</kbd> or <kbd>?</kbd> to close.</p>
+      </div>
+    </div>
     <div class="layout">
       <section class="feeds" aria-label="Feeds">
         <div class="stack">
@@ -493,6 +606,68 @@ export function renderHome(params: {
       (() => {
         const entries = Array.from(document.querySelectorAll('[data-entry-id]'));
         let pointer = 0;
+
+        const decodeHtmlEntities = (input) => {
+          const named = {
+            amp: "&",
+            lt: "<",
+            gt: ">",
+            quot: '"',
+            apos: "'",
+            nbsp: " ",
+          };
+          return String(input || "").replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (_, ent) => {
+            if (ent[0] === "#") {
+              const isHex = ent[1]?.toLowerCase() === "x";
+              const num = parseInt(ent.slice(isHex ? 2 : 1), isHex ? 16 : 10);
+              if (!Number.isNaN(num)) {
+                return String.fromCodePoint(num);
+              }
+              return _;
+            }
+            const lower = ent.toLowerCase();
+            return named[lower] ?? _;
+          });
+        };
+
+        const shortcutsOverlay = document.querySelector("[data-shortcut-overlay]");
+        const shortcutsPanel = shortcutsOverlay instanceof HTMLElement ? shortcutsOverlay.querySelector(".shortcut-panel") : null;
+        const closeShortcutsButton =
+          shortcutsOverlay instanceof HTMLElement ? shortcutsOverlay.querySelector("[data-close-shortcuts]") : null;
+
+        const shortcutsVisible = () =>
+          shortcutsOverlay instanceof HTMLElement && !shortcutsOverlay.hasAttribute("hidden");
+
+        const openShortcuts = () => {
+          if (!(shortcutsOverlay instanceof HTMLElement)) return;
+          shortcutsOverlay.removeAttribute("hidden");
+          if (shortcutsPanel instanceof HTMLElement) shortcutsPanel.focus({ preventScroll: true });
+        };
+
+        const closeShortcuts = () => {
+          if (!(shortcutsOverlay instanceof HTMLElement)) return;
+          shortcutsOverlay.setAttribute("hidden", "true");
+        };
+
+        const toggleShortcuts = () => {
+          if (shortcutsVisible()) {
+            closeShortcuts();
+          } else {
+            openShortcuts();
+          }
+        };
+
+        if (closeShortcutsButton instanceof HTMLElement) {
+          closeShortcutsButton.addEventListener("click", () => closeShortcuts());
+        }
+
+        if (shortcutsOverlay instanceof HTMLElement) {
+          shortcutsOverlay.addEventListener("click", (event) => {
+            if (event.target === shortcutsOverlay) {
+              closeShortcuts();
+            }
+          });
+        }
 
         const opmlInput = document.querySelector('input[name="opml"]');
         if (opmlInput instanceof HTMLInputElement) {
@@ -555,10 +730,21 @@ export function renderHome(params: {
         entries.forEach((el) => io.observe(el));
 
         window.addEventListener("keydown", (event) => {
+          if (shortcutsVisible()) {
+            if (event.key === "Escape" || event.key === "?") {
+              event.preventDefault();
+              closeShortcuts();
+            }
+            return;
+          }
+
           const target = event.target;
           if (target && target.tagName && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
 
-          if (event.key === "j") {
+          if (event.key === "?") {
+            event.preventDefault();
+            toggleShortcuts();
+          } else if (event.key === "j") {
             event.preventDefault();
             focusEntry(Math.min(entries.length - 1, pointer + 1));
           } else if (event.key === "k") {
@@ -651,7 +837,9 @@ export function renderHome(params: {
                 return;
               }
               if (!allowedTags.has(el.tagName)) {
+                const children = Array.from(el.childNodes);
                 unwrap(el);
+                children.forEach((child) => cleanse(child));
               } else {
                 for (const attr of Array.from(el.attributes)) {
                   if (attr.name.startsWith("on")) {
@@ -771,6 +959,8 @@ function renderEntries(entries: EntryView[]) {
       const summary = entry.summary ?? "";
       const rawSummary = encodeURIComponent(summary);
 
+      const hydratedSummary = sanitizeSummaryHtml(summary);
+
       return `
       <article class="entry" tabindex="-1" data-entry-id="${entry.id}" data-sort-key="${entry.sort_key}" data-read="${entry.unread ? "0" : "1"}">
         <header>
@@ -778,7 +968,7 @@ function renderEntries(entries: EntryView[]) {
           <time datetime="${escapeHtml(date ?? "")}">${displayDate}</time>
         </header>
         <h3><a href="${escapeAttr(entry.url ?? entry.feed_url)}" target="_blank" rel="noreferrer">${escapeHtml(entry.title ?? "(untitled)")}</a></h3>
-        ${summary ? `<div class="summary" data-raw="${escapeAttr(rawSummary)}">${escapeHtml(decodeHtmlEntities(stripHtml(summary).trim()))}</div>` : ""}
+        ${summary ? `<div class="summary" data-raw="${escapeAttr(rawSummary)}">${hydratedSummary}</div>` : ""}
         <div class="actions">
           <form class="inline" method="post" action="/entries/${entry.id}/read">
             <button type="submit" data-action="mark-read">Mark read</button>
@@ -890,4 +1080,20 @@ function decodeHtmlEntities(input: string) {
     const lower = ent.toLowerCase();
     return named[lower] ?? _;
   });
+}
+
+function sanitizeSummaryHtml(html: string) {
+  if (!html) return "";
+  let cleaned = decodeHtmlEntities(html);
+  cleaned = cleaned.replace(/<\s*(script|style)[^>]*>[\s\S]*?<\/\s*\1>/gi, "");
+  cleaned = cleaned.replace(/<\s*(iframe|object|embed|form)[^>]*>[\s\S]*?<\/\s*\1>/gi, "");
+  cleaned = cleaned.replace(/\son\w+\s*=\s*(['"])[\s\S]*?\1/gi, "");
+  cleaned = cleaned.replace(/(href|src)\s*=\s*(['"])\s*javascript:[^'"]*\2/gi, '$1="#"');
+  cleaned = cleaned.replace(/<img([^>]+)>/gi, (_match, attrs) => {
+    const safeAttrs = attrs
+      .replace(/\s*(on\w+|style)\s*=\s*(['"])[\s\S]*?\2/gi, "")
+      .replace(/\s*src\s*=\s*(['"])\s*javascript:[^'"]*\1/gi, ' src="#"');
+    return `<img${safeAttrs}>`;
+  });
+  return cleaned;
 }

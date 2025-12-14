@@ -50,9 +50,9 @@ function parseRss(rss: any): ParsedFeed {
 
       const imageUrl = findImageUrl(item);
       let summary =
-        text(item?.["content:encoded"]) ??
-        text(item?.description) ??
-        text(item?.summary) ??
+        richText(item?.["content:encoded"]) ??
+        richText(item?.description) ??
+        richText(item?.summary) ??
         null;
 
       if (imageUrl) {
@@ -94,17 +94,28 @@ function parseAtom(feed: any): ParsedFeed {
       const link = pickLink(entry?.link);
       const guid = text(entry?.id) ?? link ?? text(entry?.title) ?? hashEntry(entry);
       const published = normalizeDate(entry?.published) ?? normalizeDate(entry?.updated) ?? null;
+      const imageUrl = findImageUrl(entry);
       const summary =
-        text(entry?.summary?.["#text"] ?? entry?.summary) ??
-        text(entry?.content?.["#text"] ?? entry?.content) ??
+        richText(entry?.summary) ??
+        richText(entry?.content) ??
         null;
+
+      let hydratedSummary = summary;
+      if (imageUrl) {
+        const hasImg = hydratedSummary ? /<\s*img/i.test(hydratedSummary) : false;
+        if (!hasImg) {
+          const alt = text(entry?.title) ?? "";
+          const imgTag = `<p><img src="${imageUrl}" alt="${escapeHtmlAttr(alt)}" /></p>`;
+          hydratedSummary = hydratedSummary ? imgTag + hydratedSummary : imgTag;
+        }
+      }
 
       return {
         guid,
         url: link,
         title: text(entry?.title?.["#text"] ?? entry?.title) ?? null,
         author: text(entry?.author?.name ?? entry?.author?.["#text"]),
-        summary,
+        summary: hydratedSummary ?? null,
         published_at: published,
         raw: entry,
       } satisfies ParsedEntry;
@@ -156,22 +167,102 @@ function hashEntry(payload: unknown): string {
   return createHash("sha1").update(JSON.stringify(payload ?? {})).digest("hex");
 }
 
-function findImageUrl(item: any): string | null {
-  const enclosures = toArray(item?.enclosure ?? item?.enclosures);
-  for (const enclosure of enclosures) {
-    const type = (enclosure?.["@_type"] ?? enclosure?.type ?? "").toLowerCase();
-    const url = enclosure?.["@_url"] ?? enclosure?.url;
-    if (url && type.startsWith("image/")) return String(url);
+function richText(value: unknown, tagName?: string): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
   }
+  if (Array.isArray(value)) {
+    const rendered = value.map((v) => richText(v, tagName)).filter(Boolean) as string[];
+    if (rendered.length > 0) return rendered.join(" ");
+    return null;
+  }
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    if ("#text" in obj && obj["#text"] !== undefined) return richText(obj["#text"]);
+    if ("__cdata" in obj && obj["__cdata"] !== undefined) return richText(obj["__cdata"]);
+
+    const attrs = Object.entries(obj).filter(([key]) => key.startsWith("@_"));
+    const children = Object.entries(obj).filter(([key]) => !key.startsWith("@_"));
+
+    if (tagName) {
+      const attrText = attrs
+        .map(([key, val]) => `${key.replace(/^@_/, "")}="${escapeHtmlAttr(String(val ?? ""))}"`)
+        .join(" ");
+      const childText = children
+        .map(([childKey, childVal]) => richText(childVal, childKey))
+        .filter(Boolean)
+        .join("");
+
+      if (isVoidElement(tagName) && (attrText || !childText)) {
+        return `<${tagName}${attrText ? " " + attrText : ""} />`;
+      }
+      if (attrText || childText) {
+        return `<${tagName}${attrText ? " " + attrText : ""}>${childText}</${tagName}>`;
+      }
+    }
+
+    const flattened = children
+      .map(([childKey, childVal]) => richText(childVal, childKey))
+      .filter(Boolean)
+      .join(" ");
+    if (flattened) return flattened;
+  }
+  return null;
+}
+
+function findImageUrl(item: any): string | null {
+  const candidates: Array<string | null> = [];
+
+  const enclosures = toArray(item?.enclosure ?? item?.enclosures);
+  candidates.push(pickImageFromEnclosures(enclosures));
 
   const mediaContent = toArray(item?.["media:content"]);
-  for (const media of mediaContent) {
-    const type = (media?.["@_type"] ?? media?.type ?? "").toLowerCase();
-    const url = media?.["@_url"] ?? media?.url ?? media?.["@_src"] ?? media?.src;
-    if (url && (!type || type.startsWith("image/"))) return String(url);
+  candidates.push(pickImageFromEnclosures(mediaContent));
+
+  const mediaThumbs = toArray(item?.["media:thumbnail"]);
+  candidates.push(pickImageFromEnclosures(mediaThumbs));
+
+  const mediaGroups = toArray(item?.["media:group"]);
+  for (const group of mediaGroups) {
+    candidates.push(pickImageFromEnclosures(toArray(group?.["media:content"])));
+    candidates.push(pickImageFromEnclosures(toArray(group?.["media:thumbnail"])));
   }
 
+  const linkImages = toArray(item?.link);
+  for (const link of linkImages) {
+    const rel = (link?.["@_rel"] ?? link?.rel ?? "").toLowerCase();
+    const type = link?.["@_type"] ?? link?.type ?? "";
+    const href = link?.["@_href"] ?? link?.href ?? null;
+    if (href && (rel === "enclosure" || looksLikeImage(type, href))) {
+      candidates.push(String(href));
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (candidate) return candidate;
+  }
   return null;
+}
+
+function pickImageFromEnclosures(enclosures: any[]): string | null {
+  for (const enclosure of enclosures) {
+    const type = enclosure?.["@_type"] ?? enclosure?.type ?? "";
+    const url = enclosure?.["@_url"] ?? enclosure?.url ?? enclosure?.["@_src"] ?? enclosure?.src;
+    if (url && looksLikeImage(type, url)) return String(url);
+  }
+  return null;
+}
+
+function looksLikeImage(type: string | undefined, url: string): boolean {
+  const lowerType = (type ?? "").toLowerCase();
+  if (lowerType.startsWith("image/")) return true;
+  const cleanUrl = url.split("?")[0] ?? "";
+  return /\.(avif|gif|jpe?g|png|webp|svg)$/i.test(cleanUrl);
+}
+
+function isVoidElement(tag: string): boolean {
+  return /^(area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)$/i.test(tag);
 }
 
 function escapeHtmlAttr(input: string) {
