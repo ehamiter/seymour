@@ -7,7 +7,7 @@
 Seymour is a lightweight, single-binary RSS/Atom reader built on Bun and SQLite. It runs locally or on a small VM, keeps your feeds updated on a schedule, and serves a clean UI for skimming unread items.
 
 ## Features
-- Self-hosted reader with periodic fetching that respects `ETag`/`Last-Modified`.
+- Self-hosted reader with periodic fetching that respects `ETag`/`Last-Modified` and backs off on 429s or feeds without validators.
 - SQLite-backed storage (default database at `data/reader.sqlite`).
 - Add feeds one-by-one or import OPML; edit or delete subscriptions at any time.
 - Unread-focused UI with per-feed filtering, inline mark-as-read, and mark-above-as-read controls.
@@ -41,7 +41,7 @@ Environment variables:
 - `PORT` (default `3000`)
 - `PAGE_SIZE` number of unread entries to show (default `50`)
 - `APP_PASSWORD` enables Basic Auth
-- `FETCH_INTERVAL_MS` fetch cadence in milliseconds (default 5 minutes)
+- `FETCH_INTERVAL_MS` fetch cadence in milliseconds (default 30 minutes)
 - `FETCH_TIMEOUT_MS` per-request timeout in milliseconds (default `15000`)
 - `HTTP_USER_AGENT` override the fetcher user agent
 - `DB_PATH` alternate SQLite path (default `data/reader.sqlite`)
@@ -52,7 +52,7 @@ Environment variables:
 
 ## Self-hosting tips
 - Run with `PORT=4000 APP_PASSWORD=secret bun start` behind a reverse proxy or on a private network.
-- Adjust `FETCH_INTERVAL_MS` to match your polling needs and to be kind to upstream feeds.
+- Adjust `FETCH_INTERVAL_MS` thoughtfully; the default is intentionally conservative. Feeds lacking `ETag`/`Last-Modified` headers and any 429 responses are automatically slowed down.
 - Set `HTTP_USER_AGENT` if you want a custom identifier when fetching feeds.
 
 ## Project layout

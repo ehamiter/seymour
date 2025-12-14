@@ -8,11 +8,14 @@ import {
 } from "./db";
 import { parseFeed } from "./feed-parser";
 
-const DEFAULT_INTERVAL_MS = Number(process.env.FETCH_INTERVAL_MS ?? 5 * 60 * 1000);
+const DEFAULT_INTERVAL_MS = Number(process.env.FETCH_INTERVAL_MS ?? 30 * 60 * 1000);
 const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS ?? 15000);
 const USER_AGENT =
   process.env.HTTP_USER_AGENT ??
-  "SeymourReader/0.1 (+https://github.com/)"; // Keep it simple and explicit.
+  "Seymour/0.1 (+https://github.com/you/seymour; respectful fetcher)";
+const RETRY_AFTER_FALLBACK_MS = 2 * 60 * 60 * 1000; // Slow down hard on 429s when no hint is provided.
+const ERROR_BACKOFF_MS = 60 * 60 * 1000; // Avoid hammering a failing feed.
+const NO_VALIDATOR_BACKOFF_MS = 90 * 60 * 1000; // Slow feeds that never send ETag/Last-Modified.
 
 export type FeedFetcher = {
   triggerAll: () => Promise<void>;
@@ -24,6 +27,27 @@ export function startFeedFetcher(intervalMs = DEFAULT_INTERVAL_MS): FeedFetcher 
   let running = false;
   let pendingAll = false;
   const pendingFeeds = new Set<number>();
+  const backoffUntil = new Map<number, number>();
+
+  const getBackoffRemaining = (feedId: number): number => {
+    const until = backoffUntil.get(feedId);
+    if (!until) return 0;
+    const remaining = until - Date.now();
+    if (remaining <= 0) {
+      backoffUntil.delete(feedId);
+      return 0;
+    }
+    return remaining;
+  };
+
+  const setBackoff = (feedId: number, delayMs: number) => {
+    const jitter = Math.floor(delayMs * 0.1 * Math.random());
+    const until = Date.now() + delayMs + jitter;
+    const current = backoffUntil.get(feedId) ?? 0;
+    if (until > current) {
+      backoffUntil.set(feedId, until);
+    }
+  };
 
   const schedule = () => {
     if (running) return;
@@ -43,7 +67,8 @@ export function startFeedFetcher(intervalMs = DEFAULT_INTERVAL_MS): FeedFetcher 
       pendingAll = false;
       const feeds = feedsForFetching();
       for (const feed of feeds) {
-        await fetchAndStore(feed);
+        if (getBackoffRemaining(feed.id) > 0) continue;
+        await fetchAndStore(feed, { setBackoff });
       }
     }
 
@@ -52,7 +77,9 @@ export function startFeedFetcher(intervalMs = DEFAULT_INTERVAL_MS): FeedFetcher 
       pendingFeeds.clear();
       for (const id of ids) {
         const feed = findFeedById(id);
-        if (feed) await fetchAndStore(feed);
+        if (!feed) continue;
+        if (getBackoffRemaining(feed.id) > 0) continue;
+        await fetchAndStore(feed, { setBackoff });
       }
     }
   };
@@ -79,8 +106,12 @@ export function startFeedFetcher(intervalMs = DEFAULT_INTERVAL_MS): FeedFetcher 
   };
 }
 
-async function fetchAndStore(feed: FeedRow) {
+async function fetchAndStore(
+  feed: FeedRow,
+  options: { setBackoff?: (feedId: number, delayMs: number) => void } = {},
+) {
   const fetchedAt = new Date().toISOString();
+  const setBackoff = options.setBackoff;
   try {
     const headers: HeadersInit = {
       "User-Agent": USER_AGENT,
@@ -94,6 +125,14 @@ async function fetchAndStore(feed: FeedRow) {
 
     const etag = res.headers.get("etag");
     const lastModified = res.headers.get("last-modified");
+
+    if (res.status === 429) {
+      const retryMs = parseRetryAfter(res.headers.get("retry-after")) ?? RETRY_AFTER_FALLBACK_MS;
+      if (setBackoff) setBackoff(feed.id, retryMs);
+      const nextAttempt = new Date(Date.now() + retryMs).toISOString();
+      recordFetchError(feed.id, `HTTP 429 Too Many Requests; backing off until ${nextAttempt}`);
+      return;
+    }
 
     if (res.status === 304) {
       touchFeedFetch(feed.id, { etag: etag ?? feed.etag, lastModified: lastModified ?? feed.last_modified });
@@ -111,11 +150,31 @@ async function fetchAndStore(feed: FeedRow) {
       lastModified: lastModified ?? feed.last_modified,
       fetchedAt,
     });
+
+    if (!etag && !lastModified && setBackoff) {
+      setBackoff(feed.id, NO_VALIDATOR_BACKOFF_MS);
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`fetch failed for feed ${feed.url}:`, message);
-    recordFetchError(feed.id, message.slice(0, 500));
+    const note = setBackoff
+      ? `${message.slice(0, 400)}; backing off for ${Math.round(ERROR_BACKOFF_MS / 60000)}m`
+      : message.slice(0, 500);
+    recordFetchError(feed.id, note);
+    if (setBackoff) setBackoff(feed.id, ERROR_BACKOFF_MS);
   }
+}
+
+function parseRetryAfter(value: string | null): number | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (/^\d+$/.test(trimmed)) {
+    return Number.parseInt(trimmed, 10) * 1000;
+  }
+  const dateMs = Date.parse(trimmed);
+  if (Number.isNaN(dateMs)) return null;
+  const delta = dateMs - Date.now();
+  return delta > 0 ? delta : null;
 }
 
 async function fetchWithTimeout(url: string, init: RequestInit, timeout: number) {
