@@ -19,9 +19,9 @@
 - Use explicit return types on exported functions and small helpers for parsing, scheduling, and rendering logic.
 
 ## Testing Guidelines
-- No automated tests yet; smoke-test via `bun dev`, load `/`, and add a feed to verify fetching/rendering.
+- Automated tests are available; run `bun test` for the suite. You can still smoke-test via `bun dev`, load `/`, and add a feed to verify fetching/rendering.
 - When touching parsing or fetch flows, test with the Hacker News front page feed `https://hnrss.org/frontpage` (store temporary files under `data/`) and confirm entries appear on `/`.
-- If adding tests, co-locate them (e.g., `src/feed-parser.test.ts`) and add a `bun test` script before merging.
+- If adding functionality, add or update tests and co-locate them (e.g., `src/feed-parser.test.ts`, `src/html.test.ts`). A `bun test` script is already present.
 
 ## Commit & Pull Request Guidelines
 - Do not do any git operations. The user will handle this.

@@ -17,7 +17,7 @@ export function renderHome(params: {
     typeof selectedFeedId === "number" ? feeds.find((f) => f.id === selectedFeedId) ?? null : null;
   const heading =
     selectedFeed && selectedFeedId
-      ? `Unread — ${escapeHtml(selectedFeed.title ?? selectedFeed.url)}`
+      ? `Unread — ${formatText(selectedFeed.title ?? selectedFeed.url)}`
       : "Unread";
 
   return `
@@ -1120,16 +1120,17 @@ function renderEntries(entries: EntryView[]) {
       const displayDate = formatDate(date);
       const summary = entry.summary ?? "";
       const rawSummary = encodeURIComponent(summary);
+      const title = formatText(entry.title ?? "(untitled)");
 
       const hydratedSummary = sanitizeSummaryHtml(summary);
 
-      return `
+          return `
       <article class="entry" tabindex="-1" data-entry-id="${entry.id}" data-sort-key="${entry.sort_key}" data-read="${entry.unread ? "0" : "1"}">
         <header>
           <span class="feed">${escapeHtml(entry.feed_title ?? entry.feed_url)}</span>
           <time datetime="${escapeHtml(date ?? "")}">${displayDate}</time>
         </header>
-        <h3><a href="${escapeAttr(entry.url ?? entry.feed_url)}" target="_blank" rel="noreferrer">${escapeHtml(entry.title ?? "(untitled)")}</a></h3>
+        <h3><a href="${escapeAttr(entry.url ?? entry.feed_url)}" target="_blank" rel="noreferrer">${title}</a></h3>
         ${summary ? `<div class="summary" data-raw="${escapeAttr(rawSummary)}">${hydratedSummary}</div>` : ""}
         <div class="actions">
           <form class="inline" method="post" action="/entries/${entry.id}/read">
@@ -1155,7 +1156,7 @@ function renderFeedList(feeds: FeedWithCounts[], selectedFeedId?: number) {
           <div class="feed-row ${active ? "active" : ""}">
             <a class="feed-main" href="/?feed=${feed.id}">
               <div class="stack">
-                <strong>${escapeHtml(feed.title ?? feed.url)}</strong>
+                <strong>${formatText(feed.title ?? feed.url)}</strong>
                 ${feed.fetch_error ? `<span class="feed-error">${escapeHtml(feed.fetch_error)}</span>` : ""}
               </div>
               <span class="unread-pill">${feed.unread_count}</span>
@@ -1215,6 +1216,10 @@ function escapeHtml(input: string) {
 
 function escapeAttr(input: string) {
   return escapeHtml(input).replace(/`/g, "&#96;");
+}
+
+function formatText(input: string | null | undefined) {
+  return escapeHtml(decodeHtmlEntities(input ?? ""));
 }
 
 function stripHtml(input: string) {

@@ -108,6 +108,9 @@ describe("keyboard shortcuts", () => {
       ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "a" }));
       expect(ctx.document.activeElement).toBe(urlInput);
 
+      // Close settings to allow further shortcuts.
+      ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "Escape" }));
+
       // Open the current entry in a new tab.
       ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "v" }));
       expect(opened.length).toBe(1);
