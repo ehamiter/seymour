@@ -14,6 +14,18 @@ Seymour is a lightweight, single-binary RSS/Atom reader built on Bun and SQLite.
 - Manual refresh trigger alongside automatic background fetching.
 - Optional Basic Auth via `APP_PASSWORD` for shared deployments.
 
+## Default Shortcuts
+| Key | Action |
+| --- | --- |
+| `j` | Next item |
+| `k` | Previous item |
+| `m` | Mark current read |
+| `Shift+M` | Mark current and above read |
+| `v` | Open current link in a new tab |
+| `r` | Refresh all feeds |
+| `a` | Open Settings and focus “Add feed URL” |
+| `?` | Toggle the shortcuts overlay |
+
 ## Requirements
 - [Bun](https://bun.sh/) runtime.
 - SQLite is bundled with Bun; no extra services required.
