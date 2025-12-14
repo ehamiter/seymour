@@ -1,6 +1,12 @@
-# <img src="static/seymour.png" alt="Seymour logo" width="40" style="vertical-align: middle;" /> Seymour
+# Seymour <img src="static/seymour.png" alt="Seymour logo" width="60" style="vertical-align: middle;" />
 
 Seymour is a lightweight, single-binary RSS/Atom reader built on Bun and SQLite. It runs locally or on a small VM, keeps your feeds updated on a schedule, and serves a clean UI for skimming unread items.
+
+## Screenshot
+<p align="center">
+  <img src="static/seymour-screenshot.png" alt="Seymour Reader UI" width="900" />
+</p>
+
 
 ## Features
 - Self-hosted reader with periodic fetching that respects `ETag`/`Last-Modified` and backs off on 429s or feeds without validators.
@@ -31,10 +37,6 @@ bun start
 ```
 
 Visit `http://localhost:3000` (or your configured `PORT`). Open Settings to add a feed URL or upload an OPML file. Click entries to open them; use the buttons to mark items or refresh.
-
-<p align="center">
-  <img src="static/seymour-screenshot.png" alt="Seymour Reader UI" width="900" />
-</p>
 
 ## Configuration
 Environment variables:
