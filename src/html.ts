@@ -1257,5 +1257,26 @@ export function sanitizeSummaryHtml(html: string) {
       .replace(/\s*src\s*=\s*(['"])\s*javascript:[^'"]*\1/gi, ' src="#"');
     return `<img${safeAttrs}>`;
   });
+  cleaned = cleaned.replace(/<a(\s[^>]*?)?>/gi, (match, attrs = "") => {
+    const hasTarget = /\starget\s*=/i.test(attrs);
+    const hasRel = /\srel\s*=/i.test(attrs);
+    let updatedAttrs = attrs;
+    if (!hasTarget) updatedAttrs += ' target="_blank"';
+    if (hasRel) {
+      updatedAttrs = updatedAttrs.replace(/rel\s*=\s*(['"])(.*?)\1/i, (_m, quote, value) => {
+        const tokens = new Set(
+          String(value)
+            .split(/\s+/)
+            .filter(Boolean),
+        );
+        tokens.add("noreferrer");
+        tokens.add("noopener");
+        return `rel="${Array.from(tokens).join(" ")}"`;
+      });
+    } else {
+      updatedAttrs += ' rel="noreferrer noopener"';
+    }
+    return `<a${updatedAttrs}>`;
+  });
   return cleaned;
 }
