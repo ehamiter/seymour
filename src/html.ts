@@ -870,6 +870,8 @@ export function renderHome(params: {
           });
         }
 
+        let scrollingToEntry = false;
+
         const setCurrent = (idx) => {
           entries.forEach((el, i) => el.classList.toggle("current", i === idx));
           pointer = idx;
@@ -878,6 +880,7 @@ export function renderHome(params: {
         const focusEntry = (idx) => {
           const target = entries[idx];
           if (!target) return;
+          scrollingToEntry = true;
           setCurrent(idx);
           target.focus({ preventScroll: true });
           if (entriesContainer instanceof HTMLElement) {
@@ -888,6 +891,7 @@ export function renderHome(params: {
           } else {
             target.scrollIntoView({ block: "start", behavior: "smooth" });
           }
+          setTimeout(() => { scrollingToEntry = false; }, 300);
         };
 
         const markRead = (entry, silent) => {
@@ -934,6 +938,7 @@ export function renderHome(params: {
         entries.forEach((el) => io.observe(el));
 
         const highlightIO = new IntersectionObserver((items) => {
+          if (scrollingToEntry) return;
           let topEntry = null;
           let topIdx = -1;
           items.forEach((item) => {
