@@ -110,12 +110,6 @@ export function renderHome(params: {
         --base-chroma: 0.12;
         --base-lightness: 0.50;
       }
-      
-      :root[data-theme="slate"] {
-        --base-hue: 220;
-        --base-chroma: 0.06;
-        --base-lightness: 0.45;
-      }
 
       * { box-sizing: border-box; }
       html {
@@ -816,10 +810,6 @@ export function renderHome(params: {
                 <span class="theme-swatch" style="background: oklch(0.50 0.12 350);"></span>
                 <span>Rose</span>
               </button>
-              <button type="button" class="theme-btn" data-theme="slate" aria-label="Slate theme">
-                <span class="theme-swatch" style="background: oklch(0.45 0.06 220);"></span>
-                <span>Slate</span>
-              </button>
             </div>
             <div class="stack" style="margin-top: 0.5rem;">
               <span class="muted" style="font-size: 0.9rem;">Custom color</span>
@@ -1218,41 +1208,58 @@ export function renderHome(params: {
             const g = parseInt(hex.slice(3, 5), 16) / 255;
             const b = parseInt(hex.slice(5, 7), 16) / 255;
             
-            // Convert RGB to linear RGB
-            const toLinear = (c) => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-            const rLin = toLinear(r);
-            const gLin = toLinear(g);
-            const bLin = toLinear(b);
-            
-            // Convert linear RGB to OKLCH (simplified approximation)
-            // For production, you'd use a proper colorspace conversion library
-            // This is a reasonable approximation for the hue
-            const max = Math.max(rLin, gLin, bLin);
-            const min = Math.min(rLin, gLin, bLin);
+            // Convert RGB to HSL first (simpler and more reliable)
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
             const delta = max - min;
             
-            let hue = 0;
+            let hslHue = 0;
             if (delta !== 0) {
-              if (max === rLin) {
-                hue = 60 * (((gLin - bLin) / delta) % 6);
-              } else if (max === gLin) {
-                hue = 60 * (((bLin - rLin) / delta) + 2);
+              if (max === r) {
+                hslHue = 60 * (((g - b) / delta) % 6);
+              } else if (max === g) {
+                hslHue = 60 * (((b - r) / delta) + 2);
               } else {
-                hue = 60 * (((rLin - gLin) / delta) + 4);
+                hslHue = 60 * (((r - g) / delta) + 4);
               }
             }
-            if (hue < 0) hue += 360;
+            if (hslHue < 0) hslHue += 360;
             
-            // Lightness (approximate)
+            // Map HSL hue to approximate OKLCH hue
+            // HSL and OKLCH hues don't align 1:1, so we need to remap
+            const hueMap = [
+              [0, 30],      // Red
+              [60, 90],     // Yellow
+              [120, 145],   // Green
+              [180, 195],   // Cyan
+              [240, 265],   // Blue
+              [300, 330],   // Magenta
+              [360, 390]    // Red (wrap)
+            ];
+            
+            let oklchHue = hslHue;
+            for (let i = 0; i < hueMap.length - 1; i++) {
+              const [hslStart, oklchStart] = hueMap[i];
+              const [hslEnd, oklchEnd] = hueMap[i + 1];
+              if (hslHue >= hslStart && hslHue <= hslEnd) {
+                const t = (hslHue - hslStart) / (hslEnd - hslStart);
+                oklchHue = oklchStart + t * (oklchEnd - oklchStart);
+                break;
+              }
+            }
+            if (oklchHue >= 360) oklchHue -= 360;
+            
+            // Lightness (approximate from HSL lightness)
             const lightness = (max + min) / 2;
             
-            // Chroma (approximate)
-            const chroma = lightness > 0 && lightness < 1 ? delta / (1 - Math.abs(2 * lightness - 1)) : 0;
+            // Chroma (approximate from HSL saturation)
+            const saturation = delta === 0 ? 0 : delta / (1 - Math.abs(2 * lightness - 1));
+            const chroma = saturation * 0.15; // Scale saturation to reasonable chroma range
             
             return {
-              hue: hue.toFixed(0),
-              chroma: Math.min(0.15, chroma * 0.4).toFixed(2),
-              lightness: Math.max(0.35, Math.min(0.65, lightness)).toFixed(2)
+              hue: oklchHue.toFixed(0),
+              chroma: Math.max(0.06, Math.min(0.18, chroma)).toFixed(2),
+              lightness: Math.max(0.40, Math.min(0.60, lightness)).toFixed(2)
             };
           };
 
