@@ -30,18 +30,91 @@ export function renderHome(params: {
     <title>Seymour Reader</title>
     <style>
       :root {
-        color-scheme: light;
-        --bg: #f7f7fb;
-        --panel: #ffffff;
-        --ink: #0f172a;
-        --muted: #5f6b7a;
-        --accent: #234f9e;
-        --accent-strong: #113a7c;
-        --border: #d9dfea;
-        --shadow: 0 10px 40px rgba(15, 23, 42, 0.08);
+        color-scheme: light dark;
+        
+        /* Base color in OKLCH - can be customized */
+        --base-hue: 240;
+        --base-chroma: 0.12;
+        --base-lightness: 0.50;
+        
+        /* Generate color palette from base using OKLCH for perceptual uniformity */
+        --color-base: oklch(var(--base-lightness) var(--base-chroma) var(--base-hue));
+        
+        /* Relative color variations with slight hue/chroma shifts for more natural scales */
+        --color-light: oklch(from var(--color-base) calc(l + 0.25) calc(c - 0.02) calc(h - 5));
+        --color-lighter: oklch(from var(--color-base) calc(l + 0.35) calc(c - 0.04) calc(h - 8));
+        --color-dark: oklch(from var(--color-base) calc(l - 0.15) calc(c + 0.02) calc(h + 3));
+        --color-darker: oklch(from var(--color-base) calc(l - 0.25) calc(c + 0.03) calc(h + 5));
+        
+        /* Semantic color assignments using light-dark() for automatic theme switching */
+        --bg: light-dark(
+          oklch(0.97 0.01 var(--base-hue)),
+          oklch(0.15 0.02 var(--base-hue))
+        );
+        --panel: light-dark(
+          oklch(1.0 0 0),
+          oklch(0.20 0.03 var(--base-hue))
+        );
+        --ink: light-dark(
+          oklch(0.20 0.05 var(--base-hue)),
+          oklch(0.95 0.02 var(--base-hue))
+        );
+        --muted: light-dark(
+          oklch(0.50 0.03 var(--base-hue)),
+          oklch(0.60 0.04 var(--base-hue))
+        );
+        --accent: var(--color-base);
+        --accent-strong: var(--color-dark);
+        --accent-light: var(--color-light);
+        --border: light-dark(
+          oklch(0.88 0.02 var(--base-hue)),
+          oklch(0.30 0.03 var(--base-hue))
+        );
+        --shadow: light-dark(
+          0 10px 40px oklch(0.20 0.05 var(--base-hue) / 0.08),
+          0 10px 40px oklch(0.05 0.02 0 / 0.4)
+        );
+        
         font-family: "Atkinson Hyperlegible", "IBM Plex Sans", "Segoe UI", sans-serif;
         background-color: var(--bg);
         color: var(--ink);
+      }
+      
+      /* Predefined themes - override base color values */
+      :root[data-theme="blue"] {
+        --base-hue: 240;
+        --base-chroma: 0.12;
+        --base-lightness: 0.50;
+      }
+      
+      :root[data-theme="purple"] {
+        --base-hue: 280;
+        --base-chroma: 0.13;
+        --base-lightness: 0.52;
+      }
+      
+      :root[data-theme="green"] {
+        --base-hue: 145;
+        --base-chroma: 0.11;
+        --base-lightness: 0.48;
+      }
+      
+      :root[data-theme="orange"] {
+        --base-hue: 45;
+        --base-chroma: 0.14;
+        --base-lightness: 0.55;
+      }
+      
+      :root[data-theme="rose"] {
+        --base-hue: 350;
+        --base-chroma: 0.12;
+        --base-lightness: 0.50;
+      }
+      
+      :root[data-theme="slate"] {
+        --base-hue: 220;
+        --base-chroma: 0.06;
+        --base-lightness: 0.45;
       }
 
       * { box-sizing: border-box; }
@@ -538,6 +611,63 @@ export function renderHome(params: {
       .muted {
         color: var(--muted);
       }
+      
+      .theme-selector {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 0.5rem;
+      }
+      
+      .theme-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.6rem;
+        border: 2px solid var(--border);
+        background: var(--panel);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 120ms ease;
+        font-size: 0.85rem;
+      }
+      
+      .theme-btn:hover {
+        transform: translateY(-2px);
+        border-color: var(--accent);
+      }
+      
+      .theme-btn.active {
+        border-color: var(--accent);
+        background: light-dark(
+          oklch(from var(--accent) calc(l + 0.40) calc(c * 0.3) h),
+          oklch(from var(--accent) calc(l - 0.20) calc(c * 0.8) h)
+        );
+        box-shadow: 0 0 0 1px var(--accent);
+      }
+      
+      .theme-swatch {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+      }
+      
+      .custom-color-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      
+      .color-picker {
+        width: 60px;
+        height: 40px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        cursor: pointer;
+        background: var(--panel);
+      }
 
       kbd {
         background: #f1f4fb;
@@ -663,6 +793,43 @@ export function renderHome(params: {
           <button type="button" data-close-settings aria-label="Close settings">Close</button>
         </div>
         <div class="settings-body">
+          <div class="stack">
+            <span><strong>Theme</strong></span>
+            <div class="theme-selector">
+              <button type="button" class="theme-btn" data-theme="blue" aria-label="Blue theme">
+                <span class="theme-swatch" style="background: oklch(0.50 0.12 240);"></span>
+                <span>Blue</span>
+              </button>
+              <button type="button" class="theme-btn" data-theme="purple" aria-label="Purple theme">
+                <span class="theme-swatch" style="background: oklch(0.52 0.13 280);"></span>
+                <span>Purple</span>
+              </button>
+              <button type="button" class="theme-btn" data-theme="green" aria-label="Green theme">
+                <span class="theme-swatch" style="background: oklch(0.48 0.11 145);"></span>
+                <span>Green</span>
+              </button>
+              <button type="button" class="theme-btn" data-theme="orange" aria-label="Orange theme">
+                <span class="theme-swatch" style="background: oklch(0.55 0.14 45);"></span>
+                <span>Orange</span>
+              </button>
+              <button type="button" class="theme-btn" data-theme="rose" aria-label="Rose theme">
+                <span class="theme-swatch" style="background: oklch(0.50 0.12 350);"></span>
+                <span>Rose</span>
+              </button>
+              <button type="button" class="theme-btn" data-theme="slate" aria-label="Slate theme">
+                <span class="theme-swatch" style="background: oklch(0.45 0.06 220);"></span>
+                <span>Slate</span>
+              </button>
+            </div>
+            <div class="stack" style="margin-top: 0.5rem;">
+              <span class="muted" style="font-size: 0.9rem;">Custom color</span>
+              <div class="custom-color-row">
+                <input type="color" id="custom-color-picker" class="color-picker" value="#234f9e" aria-label="Custom color" />
+                <button type="button" id="apply-custom-color" class="primary">Apply custom</button>
+              </div>
+              <p class="muted" style="margin: 0; font-size: 0.85rem;">Pick a color to generate a custom theme.</p>
+            </div>
+          </div>
           <form class="stack" method="post" action="/feeds" enctype="multipart/form-data">
             <div class="stack">
               <label class="stack">
@@ -1027,6 +1194,141 @@ export function renderHome(params: {
             }
           }
         });
+
+        // Theme management
+        (() => {
+          const applyTheme = (theme, customHue, customChroma, customLightness) => {
+            const root = document.documentElement;
+            if (theme === 'custom' && customHue !== null) {
+              root.removeAttribute('data-theme');
+              root.style.setProperty('--base-hue', customHue);
+              root.style.setProperty('--base-chroma', customChroma);
+              root.style.setProperty('--base-lightness', customLightness);
+            } else if (theme) {
+              root.setAttribute('data-theme', theme);
+              root.style.removeProperty('--base-hue');
+              root.style.removeProperty('--base-chroma');
+              root.style.removeProperty('--base-lightness');
+            }
+          };
+
+          const hexToOklch = (hex) => {
+            // Convert hex to RGB
+            const r = parseInt(hex.slice(1, 3), 16) / 255;
+            const g = parseInt(hex.slice(3, 5), 16) / 255;
+            const b = parseInt(hex.slice(5, 7), 16) / 255;
+            
+            // Convert RGB to linear RGB
+            const toLinear = (c) => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+            const rLin = toLinear(r);
+            const gLin = toLinear(g);
+            const bLin = toLinear(b);
+            
+            // Convert linear RGB to OKLCH (simplified approximation)
+            // For production, you'd use a proper colorspace conversion library
+            // This is a reasonable approximation for the hue
+            const max = Math.max(rLin, gLin, bLin);
+            const min = Math.min(rLin, gLin, bLin);
+            const delta = max - min;
+            
+            let hue = 0;
+            if (delta !== 0) {
+              if (max === rLin) {
+                hue = 60 * (((gLin - bLin) / delta) % 6);
+              } else if (max === gLin) {
+                hue = 60 * (((bLin - rLin) / delta) + 2);
+              } else {
+                hue = 60 * (((rLin - gLin) / delta) + 4);
+              }
+            }
+            if (hue < 0) hue += 360;
+            
+            // Lightness (approximate)
+            const lightness = (max + min) / 2;
+            
+            // Chroma (approximate)
+            const chroma = lightness > 0 && lightness < 1 ? delta / (1 - Math.abs(2 * lightness - 1)) : 0;
+            
+            return {
+              hue: hue.toFixed(0),
+              chroma: Math.min(0.15, chroma * 0.4).toFixed(2),
+              lightness: Math.max(0.35, Math.min(0.65, lightness)).toFixed(2)
+            };
+          };
+
+          // Load saved theme
+          try {
+            const saved = localStorage.getItem('seymour-theme');
+            if (saved) {
+              const data = JSON.parse(saved);
+              applyTheme(data.theme, data.customHue, data.customChroma, data.customLightness);
+              
+              // Update active state for theme buttons
+              document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.theme === data.theme);
+              });
+              
+              // Update color picker if custom
+              if (data.theme === 'custom' && data.customColor) {
+                const picker = document.getElementById('custom-color-picker');
+                if (picker instanceof HTMLInputElement) {
+                  picker.value = data.customColor;
+                }
+              }
+            }
+          } catch (e) {
+            // Ignore localStorage errors
+          }
+
+          // Theme button handlers
+          document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const theme = btn.dataset.theme;
+              if (!theme) return;
+              
+              applyTheme(theme, null, null, null);
+              
+              document.querySelectorAll('.theme-btn').forEach(b => {
+                b.classList.toggle('active', b === btn);
+              });
+              
+              try {
+                localStorage.setItem('seymour-theme', JSON.stringify({ theme }));
+              } catch (e) {
+                // Ignore localStorage errors
+              }
+            });
+          });
+
+          // Custom color handler
+          const customColorBtn = document.getElementById('apply-custom-color');
+          const customColorPicker = document.getElementById('custom-color-picker');
+          
+          if (customColorBtn && customColorPicker instanceof HTMLInputElement) {
+            customColorBtn.addEventListener('click', () => {
+              const hex = customColorPicker.value;
+              const oklch = hexToOklch(hex);
+              
+              applyTheme('custom', oklch.hue, oklch.chroma, oklch.lightness);
+              
+              document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.classList.remove('active');
+              });
+              
+              try {
+                localStorage.setItem('seymour-theme', JSON.stringify({
+                  theme: 'custom',
+                  customHue: oklch.hue,
+                  customChroma: oklch.chroma,
+                  customLightness: oklch.lightness,
+                  customColor: hex
+                }));
+              } catch (e) {
+                // Ignore localStorage errors
+              }
+            });
+          }
+        })();
 
         // Lightweight sanitizer for entry summaries to keep the DOM safe.
         (() => {
