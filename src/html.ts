@@ -1096,17 +1096,30 @@ export function renderHome(params: {
 
         const highlightIO = new IntersectionObserver((items) => {
           if (scrollingToEntry) return;
-          let topEntry = null;
+          
+          // Check all entries to find the topmost currently visible one
+          // Note: items only contains entries that changed intersection state,
+          // so we need to check the actual DOM for which entries are visible
           let topIdx = -1;
-          items.forEach((item) => {
-            if (!item.isIntersecting) return;
-            const idx = entries.indexOf(item.target);
-            if (idx === -1) return;
-            if (topEntry === null || idx < topIdx) {
-              topEntry = item.target;
-              topIdx = idx;
+          for (let i = 0; i < entries.length; i++) {
+            const entry = entries[i];
+            if (!entry) continue;
+            const rect = entry.getBoundingClientRect();
+            if (!entriesContainer) continue;
+            const containerRect = entriesContainer.getBoundingClientRect();
+            
+            // Check if entry is visibly intersecting the container
+            const isVisible = rect.top < containerRect.bottom && rect.bottom > containerRect.top;
+            const isHalfVisible = (rect.top + rect.height / 2) >= containerRect.top && 
+                                  (rect.top + rect.height / 2) <= containerRect.bottom;
+            
+            if (isVisible && isHalfVisible) {
+              topIdx = i;
+              break; // Found the topmost visible entry
             }
-          });
+          }
+          
+          // Only update if we found a visible entry different from current pointer
           if (topIdx !== -1 && topIdx !== pointer) {
             setCurrent(topIdx);
           }
