@@ -722,7 +722,7 @@ export function renderHome(params: {
           </li>
           <li class="shortcut-row">
             <span class="shortcut-keys"><kbd>a</kbd></span>
-            <span>Focus "Add feed URL"</span>
+            <span>View all feeds</span>
           </li>
           <li class="shortcut-row">
             <span class="shortcut-keys"><kbd>?</kbd></span>
@@ -1016,8 +1016,7 @@ export function renderHome(params: {
             }
           } else if (event.key === "a") {
             event.preventDefault();
-            if (!settingsVisible()) openSettings();
-            if (feedUrlInput instanceof HTMLElement) feedUrlInput.focus({ preventScroll: true });
+            window.location.href = "/";
           } else if (event.key === "v") {
             event.preventDefault();
             const entry = entries[pointer];

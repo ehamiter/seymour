@@ -23,7 +23,7 @@ Seymour is a lightweight, single-binary RSS/Atom reader built on Bun and SQLite.
 | `Shift+M` | Mark current and above read |
 | `v` | Open current link in a new tab |
 | `r` | Refresh all feeds |
-| `a` | Open Settings and focus “Add feed URL” |
+| `a` | View all feeds |
 | `?` | Toggle the shortcuts overlay |
 
 ## Requirements

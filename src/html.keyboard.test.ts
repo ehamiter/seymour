@@ -103,13 +103,14 @@ describe("keyboard shortcuts", () => {
       ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "r" }));
       expect(submitted).toBe(1);
 
-      // Focus the add-feed input.
-      const urlInput = ctx.document.querySelector<HTMLInputElement>('input[name="url"]');
+      // Navigate to all feeds (we just verify it attempts to set location).
+      let navigatedTo: string | undefined;
+      Object.defineProperty(ctx.window, "location", {
+        value: { ...ctx.window.location, set href(url: string) { navigatedTo = url; } },
+        writable: true,
+      });
       ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "a" }));
-      expect(ctx.document.activeElement).toBe(urlInput);
-
-      // Close settings to allow further shortcuts.
-      ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "Escape" }));
+      expect(navigatedTo).toBe("/");
 
       // Open the current entry in a new tab.
       ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "v" }));
