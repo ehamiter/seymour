@@ -13,7 +13,7 @@ import { startFeedFetcher } from "./feed-fetcher";
 import { renderHome } from "./html";
 import { parseOpmlFeeds } from "./opml";
 
-const PORT = Number(process.env.PORT ?? 3000);
+const PORT = Number(process.env.PORT ?? 50044);
 const PAGE_SIZE = Number(process.env.PAGE_SIZE ?? 50);
 const PASSWORD = process.env.APP_PASSWORD ?? null;
 

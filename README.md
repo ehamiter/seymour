@@ -47,11 +47,11 @@ bun dev
 bun start
 ```
 
-Visit `http://localhost:3000` (or your configured `PORT`). Open Settings to add a feed URL or upload an OPML file. Click entries to open them; use the buttons to mark items or refresh.
+Visit `http://localhost:50044` (or your configured `PORT`). Open Settings to add a feed URL or upload an OPML file. Click entries to open them; use the buttons to mark items or refresh.
 
 ## Configuration
 Environment variables:
-- `PORT` (default `3000`)
+- `PORT` (default `50044`)
 - `PAGE_SIZE` number of unread entries to show (default `50`)
 - `APP_PASSWORD` enables Basic Auth
 - `FETCH_INTERVAL_MS` fetch cadence in milliseconds (default 30 minutes)
