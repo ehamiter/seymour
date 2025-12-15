@@ -324,6 +324,11 @@ export function renderHome(params: {
         align-items: baseline;
         gap: 0.75rem;
         padding: 0.25rem 0;
+        position: static;
+        background: transparent;
+        backdrop-filter: none;
+        border-bottom: none;
+        z-index: auto;
       }
 
       .entry .feed {
@@ -868,10 +873,10 @@ export function renderHome(params: {
           if (entriesContainer instanceof HTMLElement) {
             const rect = target.getBoundingClientRect();
             const containerRect = entriesContainer.getBoundingClientRect();
-            const offset = rect.top - containerRect.top - (containerRect.height / 2) + (rect.height / 2);
+            const offset = rect.top - containerRect.top - 8;
             entriesContainer.scrollBy({ top: offset, behavior: "smooth" });
           } else {
-            target.scrollIntoView({ block: "center", behavior: "smooth" });
+            target.scrollIntoView({ block: "start", behavior: "smooth" });
           }
         };
 
