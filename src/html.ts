@@ -80,35 +80,77 @@ export function renderHome(params: {
         color: var(--ink);
       }
       
-      /* Predefined themes - override base color values */
-      :root[data-theme="blue"] {
-        --base-hue: 240;
+      /* Predefined themes - 12-bit rainbow palette from iamkate.com */
+      /* #817 */ :root[data-theme="red"] {
+        --base-hue: 350;
+        --base-chroma: 0.08;
+        --base-lightness: 0.42;
+      }
+      
+      /* #a35 */ :root[data-theme="pink"] {
+        --base-hue: 340;
         --base-chroma: 0.12;
         --base-lightness: 0.50;
       }
       
-      :root[data-theme="purple"] {
-        --base-hue: 280;
+      /* #c66 */ :root[data-theme="coral"] {
+        --base-hue: 15;
+        --base-chroma: 0.14;
+        --base-lightness: 0.58;
+      }
+      
+      /* #e94 */ :root[data-theme="orange"] {
+        --base-hue: 35;
+        --base-chroma: 0.16;
+        --base-lightness: 0.65;
+      }
+      
+      /* #ed0 */ :root[data-theme="yellow"] {
+        --base-hue: 85;
+        --base-chroma: 0.18;
+        --base-lightness: 0.75;
+      }
+      
+      /* #9d5 */ :root[data-theme="lime"] {
+        --base-hue: 120;
+        --base-chroma: 0.14;
+        --base-lightness: 0.68;
+      }
+      
+      /* #4d8 */ :root[data-theme="green"] {
+        --base-hue: 160;
+        --base-chroma: 0.12;
+        --base-lightness: 0.62;
+      }
+      
+      /* #2cb */ :root[data-theme="teal"] {
+        --base-hue: 180;
         --base-chroma: 0.13;
-        --base-lightness: 0.52;
+        --base-lightness: 0.60;
       }
       
-      :root[data-theme="green"] {
-        --base-hue: 145;
-        --base-chroma: 0.11;
-        --base-lightness: 0.48;
+      /* #0bc */ :root[data-theme="cyan"] {
+        --base-hue: 195;
+        --base-chroma: 0.14;
+        --base-lightness: 0.62;
       }
       
-      :root[data-theme="orange"] {
-        --base-hue: 45;
+      /* #09c */ :root[data-theme="azure"] {
+        --base-hue: 220;
         --base-chroma: 0.14;
         --base-lightness: 0.55;
       }
       
-      :root[data-theme="rose"] {
-        --base-hue: 350;
-        --base-chroma: 0.12;
-        --base-lightness: 0.50;
+      /* #36b */ :root[data-theme="blue"] {
+        --base-hue: 250;
+        --base-chroma: 0.13;
+        --base-lightness: 0.48;
+      }
+      
+      /* #639 */ :root[data-theme="purple"] {
+        --base-hue: 290;
+        --base-chroma: 0.11;
+        --base-lightness: 0.46;
       }
 
       * { box-sizing: border-box; }
@@ -608,7 +650,7 @@ export function renderHome(params: {
       
       .theme-selector {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        grid-template-columns: repeat(6, 1fr);
         gap: 0.5rem;
       }
       
@@ -790,25 +832,53 @@ export function renderHome(params: {
           <div class="stack">
             <span><strong>Theme</strong></span>
             <div class="theme-selector">
+              <button type="button" class="theme-btn" data-theme="red" aria-label="Red theme">
+                <span class="theme-swatch" style="background: #817;"></span>
+                <span>Red</span>
+              </button>
+              <button type="button" class="theme-btn" data-theme="pink" aria-label="Pink theme">
+                <span class="theme-swatch" style="background: #a35;"></span>
+                <span>Pink</span>
+              </button>
+              <button type="button" class="theme-btn" data-theme="coral" aria-label="Coral theme">
+                <span class="theme-swatch" style="background: #c66;"></span>
+                <span>Coral</span>
+              </button>
+              <button type="button" class="theme-btn" data-theme="orange" aria-label="Orange theme">
+                <span class="theme-swatch" style="background: #e94;"></span>
+                <span>Orange</span>
+              </button>
+              <button type="button" class="theme-btn" data-theme="yellow" aria-label="Yellow theme">
+                <span class="theme-swatch" style="background: #ed0;"></span>
+                <span>Yellow</span>
+              </button>
+              <button type="button" class="theme-btn" data-theme="lime" aria-label="Lime theme">
+                <span class="theme-swatch" style="background: #9d5;"></span>
+                <span>Lime</span>
+              </button>
+              <button type="button" class="theme-btn" data-theme="green" aria-label="Green theme">
+                <span class="theme-swatch" style="background: #4d8;"></span>
+                <span>Green</span>
+              </button>
+              <button type="button" class="theme-btn" data-theme="teal" aria-label="Teal theme">
+                <span class="theme-swatch" style="background: #2cb;"></span>
+                <span>Teal</span>
+              </button>
+              <button type="button" class="theme-btn" data-theme="cyan" aria-label="Cyan theme">
+                <span class="theme-swatch" style="background: #0bc;"></span>
+                <span>Cyan</span>
+              </button>
+              <button type="button" class="theme-btn" data-theme="azure" aria-label="Azure theme">
+                <span class="theme-swatch" style="background: #09c;"></span>
+                <span>Azure</span>
+              </button>
               <button type="button" class="theme-btn" data-theme="blue" aria-label="Blue theme">
-                <span class="theme-swatch" style="background: oklch(0.50 0.12 240);"></span>
+                <span class="theme-swatch" style="background: #36b;"></span>
                 <span>Blue</span>
               </button>
               <button type="button" class="theme-btn" data-theme="purple" aria-label="Purple theme">
-                <span class="theme-swatch" style="background: oklch(0.52 0.13 280);"></span>
+                <span class="theme-swatch" style="background: #639;"></span>
                 <span>Purple</span>
-              </button>
-              <button type="button" class="theme-btn" data-theme="green" aria-label="Green theme">
-                <span class="theme-swatch" style="background: oklch(0.48 0.11 145);"></span>
-                <span>Green</span>
-              </button>
-              <button type="button" class="theme-btn" data-theme="orange" aria-label="Orange theme">
-                <span class="theme-swatch" style="background: oklch(0.55 0.14 45);"></span>
-                <span>Orange</span>
-              </button>
-              <button type="button" class="theme-btn" data-theme="rose" aria-label="Rose theme">
-                <span class="theme-swatch" style="background: oklch(0.50 0.12 350);"></span>
-                <span>Rose</span>
               </button>
             </div>
             <div class="stack" style="margin-top: 0.5rem;">
