@@ -3,7 +3,11 @@
 Seymour is a lightweight, single-binary RSS/Atom reader built on Bun and SQLite. It runs locally or on a small VM, keeps your feeds updated on a schedule, and serves a clean UI for skimming unread items.
 
 <p align="center">
-  <img src="static/seymour-screenshot.png" alt="Seymour Reader UI" width="900" />
+  <img src="static/seymour-screenshot.png" alt="Seymour Reader UI" width="600" />
+</p>
+
+<p align="center">
+  <img src="static/seymour-settings-screenshot.png" alt="Seymour Reader Settings UI" width="600" />
 </p>
 
 ## Features
