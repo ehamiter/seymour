@@ -286,7 +286,7 @@ export function renderHome(params: {
       section.entries {
         padding: 0.5rem 0.5rem 1rem;
         display: grid;
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: 0.75rem;
         scroll-padding-top: 0;
       }
@@ -312,6 +312,7 @@ export function renderHome(params: {
         outline: 0;
         position: relative;
         scroll-margin-top: 0;
+        min-width: 0;
       }
 
       .entry:focus-visible {
@@ -369,6 +370,9 @@ export function renderHome(params: {
         gap: 0.35rem;
         color: var(--muted);
         line-height: 1.5;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        min-width: 0;
       }
 
       .summary p {
