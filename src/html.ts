@@ -45,9 +45,17 @@ export function renderHome(params: {
       }
 
       * { box-sizing: border-box; }
+      html {
+        height: 100%;
+      }
+
       body {
         margin: 0;
         min-height: 100vh;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
         background: radial-gradient(240px at 20% 10%, rgba(35, 79, 158, 0.06), transparent),
                     radial-gradient(200px at 85% 20%, rgba(17, 58, 124, 0.05), transparent),
                     var(--bg);
@@ -105,7 +113,10 @@ export function renderHome(params: {
         grid-template-columns: minmax(260px, 320px) 1fr;
         gap: 1rem;
         padding: 1rem 1.5rem 2rem;
-        align-items: start;
+        align-items: stretch;
+        flex: 1;
+        overflow: hidden;
+        min-height: 0;
       }
 
       section.feeds,
@@ -114,6 +125,10 @@ export function renderHome(params: {
         border: 1px solid var(--border);
         border-radius: 12px;
         box-shadow: var(--shadow);
+        height: 100%;
+        overflow: auto;
+        align-content: start;
+        min-height: 0;
       }
 
       section.feeds {
@@ -273,6 +288,7 @@ export function renderHome(params: {
         display: grid;
         grid-template-columns: 1fr;
         gap: 0.75rem;
+        scroll-padding-top: 0;
       }
 
       .entries > h2 {
@@ -295,8 +311,7 @@ export function renderHome(params: {
         gap: 0.35rem;
         outline: 0;
         position: relative;
-        z-index: 0;
-        scroll-margin-top: 7rem;
+        scroll-margin-top: 0;
       }
 
       .entry:focus-visible {
@@ -584,6 +599,10 @@ export function renderHome(params: {
       }
 
       @media (max-width: 980px) {
+        body {
+          height: auto;
+          overflow: auto;
+        }
         header {
           align-items: flex-start;
           flex-direction: column;
@@ -598,9 +617,17 @@ export function renderHome(params: {
         .layout {
           grid-template-columns: 1fr;
           padding: 1rem;
+          height: auto;
+          overflow: visible;
         }
         section.entries {
           grid-template-columns: 1fr;
+          height: auto;
+          overflow: visible;
+        }
+        section.feeds {
+          height: auto;
+          overflow: visible;
         }
       }
     </style>
@@ -719,6 +746,7 @@ export function renderHome(params: {
     <script>
       (() => {
         const entries = Array.from(document.querySelectorAll('[data-entry-id]'));
+        const entriesContainer = document.querySelector("section.entries");
         let pointer = 0;
 
         const decodeHtmlEntities = (input) => {
@@ -837,7 +865,14 @@ export function renderHome(params: {
           if (!target) return;
           pointer = idx;
           target.focus({ preventScroll: true });
-          target.scrollIntoView({ block: "start", behavior: "smooth" });
+          if (entriesContainer instanceof HTMLElement) {
+            const rect = target.getBoundingClientRect();
+            const containerRect = entriesContainer.getBoundingClientRect();
+            const offset = rect.top - containerRect.top - (containerRect.height / 2) + (rect.height / 2);
+            entriesContainer.scrollBy({ top: offset, behavior: "smooth" });
+          } else {
+            target.scrollIntoView({ block: "center", behavior: "smooth" });
+          }
         };
 
         const markRead = (entry, silent) => {
