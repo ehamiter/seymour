@@ -315,7 +315,8 @@ export function renderHome(params: {
         min-width: 0;
       }
 
-      .entry:focus-visible {
+      .entry:focus-visible,
+      .entry.current {
         box-shadow: 0 0 0 2px var(--accent);
       }
 
@@ -869,10 +870,15 @@ export function renderHome(params: {
           });
         }
 
+        const setCurrent = (idx) => {
+          entries.forEach((el, i) => el.classList.toggle("current", i === idx));
+          pointer = idx;
+        };
+
         const focusEntry = (idx) => {
           const target = entries[idx];
           if (!target) return;
-          pointer = idx;
+          setCurrent(idx);
           target.focus({ preventScroll: true });
           if (entriesContainer instanceof HTMLElement) {
             const rect = target.getBoundingClientRect();
@@ -926,6 +932,34 @@ export function renderHome(params: {
         }, { threshold: 0, rootMargin: "-15% 0px -55% 0px" });
 
         entries.forEach((el) => io.observe(el));
+
+        const highlightIO = new IntersectionObserver((items) => {
+          let topEntry = null;
+          let topIdx = -1;
+          items.forEach((item) => {
+            if (!item.isIntersecting) return;
+            const idx = entries.indexOf(item.target);
+            if (idx === -1) return;
+            if (topEntry === null || idx < topIdx) {
+              topEntry = item.target;
+              topIdx = idx;
+            }
+          });
+          if (topIdx !== -1 && topIdx !== pointer) {
+            setCurrent(topIdx);
+          }
+        }, { root: entriesContainer, threshold: 0.5 });
+
+        entries.forEach((el) => highlightIO.observe(el));
+
+        entries.forEach((el, idx) => {
+          el.addEventListener("click", (event) => {
+            const target = event.target;
+            if (target instanceof HTMLAnchorElement || target instanceof HTMLButtonElement) return;
+            if (target instanceof Element && target.closest("a, button")) return;
+            setCurrent(idx);
+          });
+        });
 
         window.addEventListener("keydown", (event) => {
           if (settingsVisible()) {
