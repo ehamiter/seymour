@@ -957,6 +957,10 @@ export function renderHome(params: {
 
         entries.forEach((el) => highlightIO.observe(el));
 
+        if (entries.length > 0) {
+          setCurrent(0);
+        }
+
         entries.forEach((el, idx) => {
           el.addEventListener("click", (event) => {
             const target = event.target;
