@@ -235,7 +235,7 @@ export function recordFetchSuccess(
   const updateFeed = db.prepare(`
     UPDATE feeds
     SET
-      title = ?,
+      title = CASE WHEN title IS NULL THEN ? ELSE title END,
       site_url = ?,
       etag = ?,
       last_modified = ?,

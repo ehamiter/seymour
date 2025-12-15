@@ -8,6 +8,7 @@ import {
   markEntryRead,
   recordFetchError,
   recordFetchSuccess,
+  updateFeed,
 } from "./db";
 
 beforeEach(() => {
@@ -127,6 +128,39 @@ describe("recordFetchSuccess", () => {
     expect(entryAfter.title).toBe("First");
     expect(entryAfter.summary).toBe("<p>Hello</p>");
     expect(entryAfter.fetched_at).toBe(meta2.fetchedAt);
+  });
+
+  it("preserves user-set custom title after subsequent fetches", () => {
+    const feed = ensureFeed("https://example.com/rss");
+    const meta = {
+      etag: "etag-1",
+      lastModified: null,
+      fetchedAt: "2024-01-01T00:00:00.000Z",
+    };
+
+    recordFetchSuccess(
+      feed,
+      { title: "Original Feed Title", site_url: null, raw: {}, entries: [] },
+      [],
+      meta,
+    );
+
+    let updated = findFeedById(feed.id)!;
+    expect(updated.title).toBe("Original Feed Title");
+
+    updateFeed(feed.id, { title: "My Custom Name", url: feed.url });
+    updated = findFeedById(feed.id)!;
+    expect(updated.title).toBe("My Custom Name");
+
+    recordFetchSuccess(
+      updated,
+      { title: "Original Feed Title", site_url: null, raw: {}, entries: [] },
+      [],
+      { ...meta, fetchedAt: "2024-01-02T00:00:00.000Z" },
+    );
+
+    updated = findFeedById(feed.id)!;
+    expect(updated.title).toBe("My Custom Name");
   });
 });
 
