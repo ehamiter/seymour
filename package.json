@@ -6,7 +6,11 @@
   "scripts": {
     "start": "bun run src/server.ts",
     "dev": "bun run --watch src/server.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "service:install": "bash scripts/launchd/install.sh",
+    "service:restart": "bash scripts/launchd/restart.sh",
+    "service:stop": "bash scripts/launchd/stop.sh",
+    "service:uninstall": "bash scripts/launchd/uninstall.sh"
   },
   "dependencies": {
     "fast-xml-parser": "^4.3.6"

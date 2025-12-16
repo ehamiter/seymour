@@ -53,6 +53,33 @@ bun start
 
 Visit `http://localhost:50044` (or your configured `PORT`). Open Settings to add a feed URL or upload an OPML file. Click entries to open them; use the buttons to mark items or refresh.
 
+## Run as a macOS service (launchd)
+If you want Seymour to run in the background without an open terminal, you can install a per-user LaunchAgent (starts at login and restarts on crash).
+
+```bash
+# One-time setup (creates ~/Library/LaunchAgents/com.seymour.plist)
+bun run service:install
+
+# Start / restart
+bun run service:restart
+
+# Stop
+bun run service:stop
+
+# Remove the LaunchAgent plist (stop first)
+bun run service:uninstall
+```
+
+To configure Seymour for launchd, edit `~/Library/LaunchAgents/com.seymour.plist` and add any desired `EnvironmentVariables` like `PORT`, `DB_PATH`, `APP_PASSWORD`, etc, then run `bun run service:restart`.
+
+If `bun` isn’t on launchd’s PATH on your machine, run `BUN_PATH="$(command -v bun)" bun run service:install` to bake the absolute Bun path into the plist.
+
+Logs:
+```bash
+tail -f ~/Library/Logs/seymour.log
+tail -f ~/Library/Logs/seymour.error.log
+```
+
 ## Configuration
 Environment variables:
 - `PORT` (default `50044`)
