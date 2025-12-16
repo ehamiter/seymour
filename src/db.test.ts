@@ -6,6 +6,8 @@ import {
   findFeedById,
   markAboveAsRead,
   markEntryRead,
+  markFeedEntriesRead,
+  markAllEntriesRead,
   recordFetchError,
   recordFetchSuccess,
   updateFeed,
@@ -241,5 +243,160 @@ describe("marking entries as read", () => {
     const secondAfter = db.prepare("SELECT unread, read_at FROM entries WHERE id = ?").get(second.id) as any;
     expect(secondAfter.unread).toBe(0);
     expect(secondAfter.read_at).toBeTruthy();
+  });
+
+  it("marks all unread entries in a feed as read", () => {
+    const feedA = ensureFeed("https://example.com/a.xml");
+    const feedB = ensureFeed("https://example.com/b.xml");
+    const meta = { etag: null, lastModified: null, fetchedAt: "2024-01-05T00:00:00.000Z" };
+
+    recordFetchSuccess(
+      feedA,
+      {
+        title: "Feed A",
+        site_url: null,
+        raw: {},
+        entries: [
+          {
+            guid: "a-1",
+            url: "https://example.com/a/1",
+            title: "A1",
+            author: null,
+            summary: null,
+            published_at: "2024-01-04T00:00:00.000Z",
+            raw: {},
+          },
+        ],
+      },
+      [
+        {
+          guid: "a-1",
+          url: "https://example.com/a/1",
+          title: "A1",
+          author: null,
+          summary: null,
+          published_at: "2024-01-04T00:00:00.000Z",
+          raw: {},
+        },
+      ],
+      meta,
+    );
+
+    recordFetchSuccess(
+      feedB,
+      {
+        title: "Feed B",
+        site_url: null,
+        raw: {},
+        entries: [
+          {
+            guid: "b-1",
+            url: "https://example.com/b/1",
+            title: "B1",
+            author: null,
+            summary: null,
+            published_at: "2024-01-04T00:00:00.000Z",
+            raw: {},
+          },
+        ],
+      },
+      [
+        {
+          guid: "b-1",
+          url: "https://example.com/b/1",
+          title: "B1",
+          author: null,
+          summary: null,
+          published_at: "2024-01-04T00:00:00.000Z",
+          raw: {},
+        },
+      ],
+      meta,
+    );
+
+    markFeedEntriesRead(feedA.id);
+
+    const entryA = db.prepare("SELECT unread, read_at FROM entries WHERE feed_id = ?").get(feedA.id) as any;
+    expect(entryA.unread).toBe(0);
+    expect(entryA.read_at).toBeTruthy();
+
+    const entryB = db.prepare("SELECT unread, read_at FROM entries WHERE feed_id = ?").get(feedB.id) as any;
+    expect(entryB.unread).toBe(1);
+    expect(entryB.read_at).toBeNull();
+  });
+
+  it("marks all unread entries across feeds as read", () => {
+    const feedA = ensureFeed("https://example.com/a.xml");
+    const feedB = ensureFeed("https://example.com/b.xml");
+    const meta = { etag: null, lastModified: null, fetchedAt: "2024-01-05T00:00:00.000Z" };
+
+    recordFetchSuccess(
+      feedA,
+      {
+        title: "Feed A",
+        site_url: null,
+        raw: {},
+        entries: [
+          {
+            guid: "a-1",
+            url: "https://example.com/a/1",
+            title: "A1",
+            author: null,
+            summary: null,
+            published_at: "2024-01-04T00:00:00.000Z",
+            raw: {},
+          },
+        ],
+      },
+      [
+        {
+          guid: "a-1",
+          url: "https://example.com/a/1",
+          title: "A1",
+          author: null,
+          summary: null,
+          published_at: "2024-01-04T00:00:00.000Z",
+          raw: {},
+        },
+      ],
+      meta,
+    );
+
+    recordFetchSuccess(
+      feedB,
+      {
+        title: "Feed B",
+        site_url: null,
+        raw: {},
+        entries: [
+          {
+            guid: "b-1",
+            url: "https://example.com/b/1",
+            title: "B1",
+            author: null,
+            summary: null,
+            published_at: "2024-01-04T00:00:00.000Z",
+            raw: {},
+          },
+        ],
+      },
+      [
+        {
+          guid: "b-1",
+          url: "https://example.com/b/1",
+          title: "B1",
+          author: null,
+          summary: null,
+          published_at: "2024-01-04T00:00:00.000Z",
+          raw: {},
+        },
+      ],
+      meta,
+    );
+
+    markAllEntriesRead();
+
+    const unreadCount = (db.prepare("SELECT COUNT(*) AS n FROM entries WHERE unread = 1").get() as any).n;
+    expect(unreadCount).toBe(0);
   });
 });

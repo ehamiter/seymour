@@ -4,6 +4,8 @@ import {
   listUnreadEntries,
   markAboveAsRead,
   markEntryRead,
+  markFeedEntriesRead,
+  markAllEntriesRead,
   deleteFeed,
   updateFeed,
   findFeedById,
@@ -77,6 +79,13 @@ async function route(req: Request) {
     return redirect("/?flash=" + encodeURIComponent("Subscription removed"));
   }
 
+  const markFeedReadMatch = url.pathname.match(/^\/feeds\/(\d+)\/mark-read$/);
+  if (req.method === "POST" && markFeedReadMatch) {
+    const id = Number(markFeedReadMatch[1]);
+    markFeedEntriesRead(id);
+    return respondAfterAction(req);
+  }
+
   const readMatch = url.pathname.match(/^\/entries\/(\d+)\/read$/);
   if (req.method === "POST" && readMatch) {
     const id = Number(readMatch[1]);
@@ -90,6 +99,11 @@ async function route(req: Request) {
     if (Number.isFinite(pivot)) {
       markAboveAsRead(pivot);
     }
+    return respondAfterAction(req);
+  }
+
+  if (req.method === "POST" && url.pathname === "/entries/mark-all") {
+    markAllEntriesRead();
     return respondAfterAction(req);
   }
 

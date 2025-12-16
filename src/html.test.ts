@@ -56,4 +56,17 @@ describe("sanitizeSummaryHtml", () => {
     expect(cleaned).toMatch(/rel="[^"]*noreferrer[^"]*"/);
     expect(cleaned).toMatch(/rel="[^"]*noopener[^"]*"/);
   });
+
+  it("removes base/head tags that can hijack navigation", () => {
+    const summary = `
+      <head><base href="https://evil.example/"><title>oops</title></head>
+      <p>hello</p>
+      <a href="/?feed=1">internal</a>
+    `;
+    const cleaned = sanitizeSummaryHtml(summary);
+    expect(cleaned.toLowerCase()).not.toContain("<base");
+    expect(cleaned.toLowerCase()).not.toContain("<head");
+    expect(cleaned).toContain("<p>hello</p>");
+    expect(cleaned).toContain('href="/?feed=1"');
+  });
 });

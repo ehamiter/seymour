@@ -14,7 +14,7 @@ Seymour is a lightweight, single-binary RSS/Atom reader built on Bun and SQLite.
 - Self-hosted reader with periodic fetching that respects `ETag`/`Last-Modified` and backs off on 429s or feeds without validators.
 - SQLite-backed storage (default database at `data/reader.sqlite`).
 - Add feeds one-by-one or import OPML; edit or delete subscriptions at any time.
-- Unread-focused UI with per-feed filtering, inline mark-as-read, and mark-above-as-read controls.
+- Unread-focused UI with per-feed filtering, inline mark-as-read, mark-above-as-read, and “mark all read” (global or per-subscription).
 - Manual refresh trigger alongside automatic background fetching.
 - Optional Basic Auth via `APP_PASSWORD` for shared deployments.
 - **Modern theming system** with 12 predefined color schemes from the [12-bit rainbow palette](https://iamkate.com/data/12-bit-rainbow/) (Red, Pink, Coral, Orange, Yellow, Lime, Green, Teal, Cyan, Azure, Blue, Purple) plus custom color support using OKLCH color space for perceptually uniform colors across light and dark modes.

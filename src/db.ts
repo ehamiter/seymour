@@ -202,6 +202,32 @@ export function markAboveAsRead(pivotSortKey: number): number {
   return res.changes;
 }
 
+export function markFeedEntriesRead(feedId: number): number {
+  const res = db
+    .prepare(
+      `
+      UPDATE entries
+      SET read_at = COALESCE(read_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      WHERE unread = 1 AND feed_id = ?
+    `,
+    )
+    .run(feedId);
+  return res.changes;
+}
+
+export function markAllEntriesRead(): number {
+  const res = db
+    .prepare(
+      `
+      UPDATE entries
+      SET read_at = COALESCE(read_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      WHERE unread = 1
+    `,
+    )
+    .run();
+  return res.changes;
+}
+
 export function listUnreadEntries(limit = 50, beforeSortKey?: number, feedId?: number) {
   const params: unknown[] = [];
   let sql = `

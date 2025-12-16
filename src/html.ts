@@ -367,10 +367,18 @@ export function renderHome(params: {
       }
 
       .feed-menu .menu-actions {
-        display: flex;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         gap: 0.5rem;
         align-items: center;
+      }
+
+      .feed-menu .menu-actions button {
+        width: 100%;
+      }
+
+      .feed-menu .menu-actions .wide {
+        grid-column: 1 / -1;
       }
 
       .file-button {
@@ -969,6 +977,16 @@ export function renderHome(params: {
               </div>
               <span class="unread-pill">${totalUnread(feeds)}</span>
             </a>
+            <details class="feed-menu">
+              <summary aria-label="All feeds options">…</summary>
+              <div class="menu-panel">
+                <div class="menu-actions">
+                  <form class="inline wide" method="post" action="/entries/mark-all" onsubmit="return confirm('Mark all entries as read?');">
+                    <button type="submit">Mark all read</button>
+                  </form>
+                </div>
+              </div>
+            </details>
           </div>
           ${feedList}
         </div>
@@ -1642,7 +1660,7 @@ function renderFeedList(feeds: FeedWithCounts[], selectedFeedId?: number) {
             <details class="feed-menu">
               <summary aria-label="Feed options">…</summary>
               <div class="menu-panel">
-                <form class="stack" method="post" action="/feeds/${feed.id}/update">
+                <form id="feed-update-${feed.id}" class="stack" method="post" action="/feeds/${feed.id}/update">
                   <label>
                     Title
                     <input type="text" name="title" value="${escapeAttr(feed.title ?? "")}" placeholder="Feed title" />
@@ -1651,13 +1669,16 @@ function renderFeedList(feeds: FeedWithCounts[], selectedFeedId?: number) {
                     URL
                     <input type="url" name="url" value="${escapeAttr(feed.url)}" required />
                   </label>
-                  <div class="menu-actions">
-                    <button type="submit" class="primary">Save</button>
-                  </div>
                 </form>
-                <form class="inline" method="post" action="/feeds/${feed.id}/delete" onsubmit="return confirm('Remove this subscription?');">
-                  <button type="submit" class="danger">Delete</button>
-                </form>
+                <div class="menu-actions">
+                  <form class="inline wide" method="post" action="/feeds/${feed.id}/mark-read" onsubmit="return confirm('Mark all entries from this subscription as read?');">
+                    <button type="submit">Mark all read</button>
+                  </form>
+                  <button type="submit" class="primary" form="feed-update-${feed.id}">Save</button>
+                  <form class="inline" method="post" action="/feeds/${feed.id}/delete" onsubmit="return confirm('Remove this subscription?');">
+                    <button type="submit" class="danger">Delete</button>
+                  </form>
+                </div>
               </div>
             </details>
           </div>
@@ -1730,6 +1751,10 @@ function decodeHtmlEntities(input: string) {
 export function sanitizeSummaryHtml(html: string) {
   if (!html) return "";
   let cleaned = decodeHtmlEntities(html);
+  cleaned = cleaned.replace(/<\s*head[^>]*>[\s\S]*?<\/\s*head\s*>/gi, "");
+  cleaned = cleaned.replace(/<\s*title[^>]*>[\s\S]*?<\/\s*title\s*>/gi, "");
+  cleaned = cleaned.replace(/<\s*(base|meta|link)\b[^>]*\/?>/gi, "");
+  cleaned = cleaned.replace(/<\/?\s*(html|body)\b[^>]*>/gi, "");
   cleaned = cleaned.replace(/<\s*(script|style)[^>]*>[\s\S]*?<\/\s*\1>/gi, "");
   cleaned = cleaned.replace(/<\s*(iframe|object|embed|form)[^>]*>[\s\S]*?<\/\s*\1>/gi, "");
   cleaned = cleaned.replace(/\son\w+\s*=\s*(['"])[\s\S]*?\1/gi, "");
