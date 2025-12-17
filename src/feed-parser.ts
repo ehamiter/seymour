@@ -64,9 +64,11 @@ function parseRss(rss: any): ParsedFeed {
         }
       }
 
+      const url = text(item?.link) ?? (guid.startsWith("http") ? guid : null);
+
       return {
         guid,
-        url: text(item?.link) ?? null,
+        url,
         title: text(item?.title) ?? null,
         author: text(item?.["dc:creator"]) ?? null,
         summary,
