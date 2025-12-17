@@ -9,7 +9,7 @@ import {
 import { parseFeed } from "./feed-parser";
 
 const DEFAULT_INTERVAL_MS = Number(process.env.FETCH_INTERVAL_MS ?? 30 * 60 * 1000);
-const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS ?? 15000);
+const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS ?? 45000);
 const USER_AGENT =
   process.env.HTTP_USER_AGENT ??
   "Seymour/0.1 (+https://github.com/ehamiter/seymour; respectful rss feed fetcher)";

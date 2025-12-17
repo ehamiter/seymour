@@ -219,12 +219,13 @@ export function renderHome(params: {
 
       .layout {
         display: grid;
-        grid-template-columns: minmax(260px, 320px) 1fr;
+        grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
         gap: 1rem;
         padding: 1rem 1.5rem 2rem;
         align-items: stretch;
         flex: 1;
         overflow: hidden;
+        min-width: 0;
         min-height: 0;
       }
 
@@ -237,6 +238,7 @@ export function renderHome(params: {
         height: 100%;
         overflow: auto;
         align-content: start;
+        min-width: 0;
         min-height: 0;
       }
 
@@ -526,6 +528,8 @@ export function renderHome(params: {
         border-radius: 8px;
         padding: 0.6rem;
         overflow-x: auto;
+        min-width: 0;
+        max-width: 100%;
       }
 
       .summary code {
@@ -1505,7 +1509,7 @@ export function renderHome(params: {
                     continue;
                   }
                   const allowed = allowedAttrs[el.tagName];
-                  if (allowed && !allowed.has(attr.name)) {
+                  if (!allowed || !allowed.has(attr.name)) {
                     el.removeAttribute(attr.name);
                   }
                 }
@@ -1564,16 +1568,16 @@ export function renderHome(params: {
           };
 
       const sanitize = (html) => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html || "", "text/html");
-        const root = doc.body || doc.documentElement;
-        if (!root) return "";
-        cleanse(root);
-        let cleaned = root.innerHTML || "";
+        const container = document.createElement("div");
+        container.innerHTML = html || "";
+        for (const child of Array.from(container.childNodes)) {
+          cleanse(child);
+        }
+        let cleaned = container.innerHTML || "";
         if (cleaned.includes("<")) return cleaned;
         // If HTML entities were decoded into text nodes only, stitch textContent.
-        if (!cleaned && root.textContent) {
-          cleaned = root.textContent;
+        if (!cleaned && container.textContent) {
+          cleaned = container.textContent;
         }
         return formatPlainText(cleaned);
       };
@@ -1581,17 +1585,27 @@ export function renderHome(params: {
           // Defer until DOM ready to ensure summaries exist
           const hydrateSummaries = () => {
             document.querySelectorAll(".summary[data-raw]").forEach((el) => {
-              const raw = el.dataset.raw || "";
-              if (!raw) return;
-              let decoded = "";
               try {
-                decoded = decodeURIComponent(raw);
+                const raw = el.dataset.raw || "";
+                if (!raw) return;
+                let decoded = "";
+                try {
+                  decoded = decodeURIComponent(raw);
+                } catch {
+                  decoded = raw;
+                }
+                const html = (() => {
+                  const text = String(decoded || "");
+                  if (text.includes("<")) return text;
+                  if (/&(?:lt|gt|#x?0*3c|#x?0*3e);/i.test(text)) return decodeHtmlEntities(text);
+                  return text;
+                })();
+                const rendered = sanitize(html);
+                if (rendered) {
+                  el.innerHTML = rendered;
+                }
               } catch {
-                decoded = raw;
-              }
-              const rendered = sanitize(decodeHtmlEntities(decoded));
-              if (rendered) {
-                el.innerHTML = rendered;
+                // Leave the existing preview content in place.
               }
             });
           };
@@ -1618,7 +1632,12 @@ function renderEntries(entries: EntryView[]) {
       const rawSummary = encodeURIComponent(summary);
       const title = formatText(entry.title ?? "(untitled)");
 
-      const hydratedSummary = sanitizeSummaryHtml(summary);
+      // Don't server-render raw HTML summaries: feeds sometimes contain malformed/truncated markup
+      // (e.g. unclosed <pre>) which can break the entire page when parsed as part of the document.
+      // Client-side hydration parses/sanitizes in a fragment context, which is resilient to this.
+      const summaryPreview = summary
+        ? escapeHtml(stripHtml(decodeHtmlEntities(summary)).replace(/\s+/g, " ").trim()).slice(0, 320)
+        : "";
 
           return `
       <article class="entry" tabindex="-1" data-entry-id="${entry.id}" data-sort-key="${entry.sort_key}" data-read="${entry.unread ? "0" : "1"}">
@@ -1627,7 +1646,7 @@ function renderEntries(entries: EntryView[]) {
           <time datetime="${escapeHtml(date ?? "")}">${displayDate}</time>
         </header>
         <h3><a href="${escapeAttr(entry.url ?? entry.feed_url)}" target="_blank" rel="noreferrer">${title}</a></h3>
-        ${summary ? `<div class="summary" data-raw="${escapeAttr(rawSummary)}">${hydratedSummary}</div>` : ""}
+        ${summary ? `<div class="summary" data-raw="${escapeAttr(rawSummary)}">${summaryPreview}</div>` : ""}
         <div class="actions">
           <form class="inline" method="post" action="/entries/${entry.id}/read">
             <button type="submit" data-action="mark-read">Mark read</button>
@@ -1750,7 +1769,12 @@ function decodeHtmlEntities(input: string) {
 
 export function sanitizeSummaryHtml(html: string) {
   if (!html) return "";
-  let cleaned = decodeHtmlEntities(html);
+  // Avoid decoding `&lt;`/`&gt;` inside already-HTML summaries (e.g. syntax-highlighted code),
+  // which can turn escaped tags into real tags and break the page layout.
+  let cleaned = html;
+  if (!cleaned.includes("<") && /&(?:lt|gt|#x?0*3c|#x?0*3e);/i.test(cleaned)) {
+    cleaned = decodeHtmlEntities(cleaned);
+  }
   cleaned = cleaned.replace(/<\s*head[^>]*>[\s\S]*?<\/\s*head\s*>/gi, "");
   cleaned = cleaned.replace(/<\s*title[^>]*>[\s\S]*?<\/\s*title\s*>/gi, "");
   cleaned = cleaned.replace(/<\s*(base|meta|link)\b[^>]*\/?>/gi, "");
