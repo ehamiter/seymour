@@ -8,17 +8,19 @@ export function renderHome(params: {
   feeds: FeedWithCounts[];
   flash?: string | null;
   selectedFeedId?: number;
+  showAll?: boolean;
 }) {
-  const { entries, feeds, flash, selectedFeedId } = params;
-  const body = renderEntries(entries);
+  const { entries, feeds, flash, selectedFeedId, showAll = false } = params;
+  const body = renderEntries(entries, showAll);
   const feedList = renderFeedList(feeds, selectedFeedId);
   const flashBox = flash ? `<div class="flash">${escapeHtml(flash)}</div>` : "";
   const selectedFeed =
     typeof selectedFeedId === "number" ? feeds.find((f) => f.id === selectedFeedId) ?? null : null;
+  const viewLabel = showAll ? "All" : "Unread";
   const heading =
     selectedFeed && selectedFeedId
-      ? `Unread — ${formatText(selectedFeed.title ?? selectedFeed.url)}`
-      : "Unread";
+      ? `${viewLabel} — ${formatText(selectedFeed.title ?? selectedFeed.url)}`
+      : viewLabel;
 
   return `
 <!doctype html>
@@ -410,13 +412,45 @@ export function renderHome(params: {
         scroll-padding-top: 0;
       }
 
-      .entries > h2 {
+      .entries > .entries-header {
         grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
         margin: 0.25rem 0 0;
+      }
+
+      .entries > .entries-header h2 {
+        margin: 0;
         font-size: 0.95rem;
         letter-spacing: 0.02em;
         text-transform: uppercase;
         color: var(--muted);
+      }
+
+      .view-toggle {
+        display: flex;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+      }
+
+      .view-toggle a {
+        color: var(--muted);
+        text-decoration: none;
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        transition: all 120ms ease;
+      }
+
+      .view-toggle a:hover {
+        background: var(--border);
+        color: var(--ink);
+      }
+
+      .view-toggle a.active {
+        color: var(--accent-strong);
+        font-weight: 600;
       }
 
       .entry {
@@ -437,6 +471,14 @@ export function renderHome(params: {
       .entry:focus-visible,
       .entry.current {
         box-shadow: 0 0 0 2px var(--accent);
+      }
+
+      .entry[data-read="1"] {
+        opacity: 0.6;
+      }
+
+      .entry[data-read="1"]:hover {
+        opacity: 1;
       }
 
       .entry header {
@@ -944,6 +986,10 @@ export function renderHome(params: {
             <span>Previous item</span>
           </li>
           <li class="shortcut-row">
+            <span class="shortcut-keys"><kbd>v</kbd></span>
+            <span>Open current link in a new tab</span>
+          </li>
+          <li class="shortcut-row">
             <span class="shortcut-keys"><kbd>m</kbd></span>
             <span>Mark current read</span>
           </li>
@@ -952,8 +998,8 @@ export function renderHome(params: {
             <span>Mark current and above read</span>
           </li>
           <li class="shortcut-row">
-            <span class="shortcut-keys"><kbd>v</kbd></span>
-            <span>Open current link in a new tab</span>
+            <span class="shortcut-keys"><kbd>u</kbd></span>
+            <span>Toggle unread/all view</span>
           </li>
           <li class="shortcut-row">
             <span class="shortcut-keys"><kbd>r</kbd></span>
@@ -979,7 +1025,7 @@ export function renderHome(params: {
               <div class="stack">
                 <strong>All feeds</strong>
               </div>
-              <span class="unread-pill">${totalUnread(feeds)}</span>
+              <span class="unread-pill" data-total-unread="true">${totalUnread(feeds)}</span>
             </a>
             <details class="feed-menu">
               <summary aria-label="All feeds options">…</summary>
@@ -996,9 +1042,16 @@ export function renderHome(params: {
         </div>
         ${flashBox}
       </section>
-      <section class="entries" aria-label="Unread entries">
-        <h2>${heading}</h2>
-        ${entries.length === 0 ? `<p class="muted" style="grid-column:1 / -1; padding:0.5rem 0 1rem;">Inbox zero. Enjoy the silence.</p>` : ""}
+      <section class="entries" aria-label="Entries">
+        <div class="entries-header">
+          <h2>${heading}</h2>
+          <div class="view-toggle">
+            <a href="/?${selectedFeedId ? `feed=${selectedFeedId}&` : ""}show=unread" class="${!showAll ? "active" : ""}" data-view="unread">Unread</a>
+            <span class="muted">|</span>
+            <a href="/?${selectedFeedId ? `feed=${selectedFeedId}&` : ""}show=all" class="${showAll ? "active" : ""}" data-view="all">All</a>
+          </div>
+        </div>
+        ${entries.length === 0 ? `<p class="muted" style="grid-column:1 / -1; padding:0.5rem 0 1rem;">${showAll ? "No entries yet." : "Inbox zero. Enjoy the silence."}</p>` : ""}
         ${body}
       </section>
     </div>
@@ -1143,16 +1196,51 @@ export function renderHome(params: {
           setTimeout(() => { scrollingToEntry = false; }, 300);
         };
 
+        const updateUnreadCounts = (feedId) => {
+          // Update specific feed count
+          const feedPill = document.querySelector(\`.unread-pill[data-feed-id="\${feedId}"]\`);
+          if (feedPill) {
+            const current = parseInt(feedPill.textContent || "0", 10);
+            const updated = Math.max(0, current - 1);
+            feedPill.textContent = String(updated);
+          }
+          
+          // Update total count
+          const totalPill = document.querySelector('.unread-pill[data-total-unread="true"]');
+          if (totalPill) {
+            const current = parseInt(totalPill.textContent || "0", 10);
+            const updated = Math.max(0, current - 1);
+            totalPill.textContent = String(updated);
+          }
+        };
+
         const markRead = (entry, silent) => {
           if (!entry || entry.dataset.read === "1") return;
           entry.dataset.read = "1";
           const id = entry.dataset.entryId;
+          const feedId = entry.dataset.feedId;
+          
+          updateUnreadCounts(feedId);
+          
           fetch(\`/entries/\${id}/read\`, {
             method: "POST",
             headers: { "Accept": "application/json" },
             keepalive: true,
           }).catch(() => {
-            if (!silent) entry.dataset.read = "0";
+            if (!silent) {
+              entry.dataset.read = "0";
+              // Revert count changes on error
+              const feedPill = document.querySelector(\`.unread-pill[data-feed-id="\${feedId}"]\`);
+              if (feedPill) {
+                const current = parseInt(feedPill.textContent || "0", 10);
+                feedPill.textContent = String(current + 1);
+              }
+              const totalPill = document.querySelector('.unread-pill[data-total-unread="true"]');
+              if (totalPill) {
+                const current = parseInt(totalPill.textContent || "0", 10);
+                totalPill.textContent = String(current + 1);
+              }
+            }
           });
         };
 
@@ -1165,11 +1253,34 @@ export function renderHome(params: {
             body: "pivot=" + encodeURIComponent(pivot),
             keepalive: true,
           }).then(() => {
+            // Count entries being marked per feed
+            const feedCounts = new Map();
+            let totalCount = 0;
+            
             entries.forEach((el) => {
-              if (Number(el.dataset.sortKey) >= Number(pivot)) {
+              if (Number(el.dataset.sortKey) >= Number(pivot) && el.dataset.read === "0") {
                 el.dataset.read = "1";
+                const feedId = el.dataset.feedId;
+                feedCounts.set(feedId, (feedCounts.get(feedId) || 0) + 1);
+                totalCount++;
               }
             });
+            
+            // Update feed counts
+            feedCounts.forEach((count, feedId) => {
+              const feedPill = document.querySelector(\`.unread-pill[data-feed-id="\${feedId}"]\`);
+              if (feedPill) {
+                const current = parseInt(feedPill.textContent || "0", 10);
+                feedPill.textContent = String(Math.max(0, current - count));
+              }
+            });
+            
+            // Update total count
+            const totalPill = document.querySelector('.unread-pill[data-total-unread="true"]');
+            if (totalPill) {
+              const current = parseInt(totalPill.textContent || "0", 10);
+              totalPill.textContent = String(Math.max(0, current - totalCount));
+            }
           }).catch(() => {});
         };
 
@@ -1279,6 +1390,16 @@ export function renderHome(params: {
           } else if (event.key === "a") {
             event.preventDefault();
             window.location.href = "/";
+          } else if (event.key === "u") {
+            event.preventDefault();
+            const url = new URL(window.location.href);
+            const currentView = url.searchParams.get("show");
+            if (currentView === "all") {
+              url.searchParams.delete("show");
+            } else {
+              url.searchParams.set("show", "all");
+            }
+            window.location.href = url.toString();
           } else if (event.key === "v") {
             event.preventDefault();
             const entry = entries[pointer];
@@ -1623,7 +1744,7 @@ export function renderHome(params: {
 `;
 }
 
-function renderEntries(entries: EntryView[]) {
+function renderEntries(entries: EntryView[], showAll: boolean) {
   return entries
     .map((entry) => {
       const date = entry.published_at ?? entry.fetched_at;
@@ -1640,22 +1761,13 @@ function renderEntries(entries: EntryView[]) {
         : "";
 
           return `
-      <article class="entry" tabindex="-1" data-entry-id="${entry.id}" data-sort-key="${entry.sort_key}" data-read="${entry.unread ? "0" : "1"}">
+      <article class="entry" tabindex="-1" data-entry-id="${entry.id}" data-feed-id="${entry.feed_id}" data-sort-key="${entry.sort_key}" data-read="${entry.unread ? "0" : "1"}">
         <header>
           <span class="feed">${escapeHtml(entry.feed_title ?? entry.feed_url)}</span>
           <time datetime="${escapeHtml(date ?? "")}">${displayDate}</time>
         </header>
         <h3><a href="${escapeAttr(entry.url ?? entry.feed_url)}" target="_blank" rel="noreferrer">${title}</a></h3>
         ${summary ? `<div class="summary" data-raw="${escapeAttr(rawSummary)}">${summaryPreview}</div>` : ""}
-        <div class="actions">
-          <form class="inline" method="post" action="/entries/${entry.id}/read">
-            <button type="submit" data-action="mark-read">Mark read</button>
-          </form>
-          <form class="inline" method="post" action="/entries/mark-above">
-            <input type="hidden" name="pivot" value="${entry.sort_key}" />
-            <button type="submit" data-action="mark-above">Mark above</button>
-          </form>
-        </div>
       </article>
     `;
     })
@@ -1674,7 +1786,7 @@ function renderFeedList(feeds: FeedWithCounts[], selectedFeedId?: number) {
                 <strong>${formatText(feed.title ?? feed.url)}</strong>
                 ${feed.fetch_error ? `<span class="feed-error">${escapeHtml(feed.fetch_error)}</span>` : ""}
               </div>
-              <span class="unread-pill">${feed.unread_count}</span>
+              <span class="unread-pill" data-feed-id="${feed.id}">${feed.unread_count}</span>
             </a>
             <details class="feed-menu">
               <summary aria-label="Feed options">…</summary>

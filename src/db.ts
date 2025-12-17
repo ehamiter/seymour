@@ -228,14 +228,17 @@ export function markAllEntriesRead(): number {
   return res.changes;
 }
 
-export function listUnreadEntries(limit = 50, beforeSortKey?: number, feedId?: number) {
+export function listEntries(limit = 50, beforeSortKey?: number, feedId?: number, unreadOnly = true) {
   const params: unknown[] = [];
   let sql = `
     SELECT e.*, f.title AS feed_title, f.url AS feed_url
     FROM entries e
     JOIN feeds f ON f.id = e.feed_id
-    WHERE e.unread = 1
+    WHERE 1=1
   `;
+  if (unreadOnly) {
+    sql += " AND e.unread = 1";
+  }
   if (typeof beforeSortKey === "number") {
     sql += " AND e.sort_key < ?";
     params.push(beforeSortKey);
@@ -250,6 +253,10 @@ export function listUnreadEntries(limit = 50, beforeSortKey?: number, feedId?: n
   return db.prepare(sql).all(...params) as Array<
     EntryRow & { feed_title: string | null; feed_url: string }
   >;
+}
+
+export function listUnreadEntries(limit = 50, beforeSortKey?: number, feedId?: number) {
+  return listEntries(limit, beforeSortKey, feedId, true);
 }
 
 export function recordFetchSuccess(

@@ -25,9 +25,10 @@ Seymour is a lightweight, single-binary RSS/Atom reader built on Bun and SQLite.
 | --- | --- |
 | `j` | Next item |
 | `k` | Previous item |
+| `v` | Open current link in a new tab |
 | `m` | Mark current read |
 | `Shift+M` | Mark current and above read |
-| `v` | Open current link in a new tab |
+| `u` | Toggle unread/all view |
 | `r` | Refresh all feeds |
 | `a` | View all feeds |
 | `?` | Toggle the shortcuts overlay |
@@ -52,7 +53,7 @@ bun dev
 bun start
 ```
 
-Visit `http://localhost:50044` (or your configured `PORT`). Open Settings to add a feed URL or upload an OPML file. Click entries to open them; use the buttons to mark items or refresh.
+Visit `http://localhost:50044` (or your configured `PORT`). Open Settings to add a feed URL or upload an OPML file. Entries are automatically marked as read as you scroll past them. Toggle between "Unread" and "All" views to re-read entries.
 
 ## Run as a macOS service (launchd)
 If you want Seymour to run in the background without an open terminal, you can install a per-user LaunchAgent (starts at login and restarts on crash).
@@ -87,7 +88,7 @@ Environment variables:
 - `PAGE_SIZE` number of unread entries to show (default `50`)
 - `APP_PASSWORD` enables Basic Auth
 - `FETCH_INTERVAL_MS` fetch cadence in milliseconds (default 30 minutes)
-- `FETCH_TIMEOUT_MS` per-request timeout in milliseconds (default `15000`)
+- `FETCH_TIMEOUT_MS` per-request timeout in milliseconds (default `45000`)
 - `HTTP_USER_AGENT` override the fetcher user agent
 - `DB_PATH` alternate SQLite path (default `data/reader.sqlite`)
 

@@ -1,6 +1,7 @@
 import {
   ensureFeed,
   listFeeds,
+  listEntries,
   listUnreadEntries,
   markAboveAsRead,
   markEntryRead,
@@ -176,11 +177,13 @@ async function handleUpdateFeed(req: Request, feedId: number) {
 
 function renderHomePage(url: URL) {
   const feedParam = url.searchParams.get("feed");
+  const showParam = url.searchParams.get("show");
   const selectedFeedId = feedParam ? Number(feedParam) : undefined;
-  const entries = listUnreadEntries(PAGE_SIZE, undefined, Number.isFinite(selectedFeedId) ? selectedFeedId : undefined);
+  const showAll = showParam === "all";
+  const entries = listEntries(PAGE_SIZE, undefined, Number.isFinite(selectedFeedId) ? selectedFeedId : undefined, !showAll);
   const feeds = listFeeds();
   const flash = url.searchParams.get("flash");
-  const html = renderHome({ entries, feeds, flash, selectedFeedId: Number.isFinite(selectedFeedId) ? selectedFeedId! : undefined });
+  const html = renderHome({ entries, feeds, flash, selectedFeedId: Number.isFinite(selectedFeedId) ? selectedFeedId! : undefined, showAll });
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
