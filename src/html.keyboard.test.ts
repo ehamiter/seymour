@@ -137,4 +137,39 @@ describe("keyboard shortcuts", () => {
       ctx.restore();
     }
   });
+
+  it("marks entry as read when clicked", async () => {
+    const html = renderHome({ entries, feeds: [feed] });
+    const fetchCalls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const fetchMock: typeof fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      fetchCalls.push({ input, init });
+      return new Response(null, { status: 204 });
+    }) as any;
+
+    const ctx = mountHtmlDocument(html, { fetchImpl: fetchMock });
+    try {
+      const entryEls = Array.from(ctx.document.querySelectorAll<HTMLElement>("article.entry"));
+      expect(entryEls.length).toBe(2);
+
+      // Click on the first entry's header (not on a link).
+      const firstEntry = entryEls[0];
+      const header = firstEntry.querySelector("header");
+      expect(firstEntry.dataset.read).toBe("0");
+
+      // Click on the header element, which will bubble to the article
+      header?.dispatchEvent(new ctx.window.MouseEvent("click", { bubbles: true }));
+      await Promise.resolve(); // Let any async operations complete
+
+      // Should be marked as read and POST to the read endpoint.
+      expect(firstEntry.dataset.read).toBe("1");
+      expect(String(fetchCalls[0]?.input)).toContain(`/entries/${firstEntry.dataset.entryId}/read`);
+
+      // Click on the same entry again - should not create duplicate requests.
+      const callCountAfterFirst = fetchCalls.length;
+      header?.dispatchEvent(new ctx.window.MouseEvent("click", { bubbles: true }));
+      expect(fetchCalls.length).toBe(callCountAfterFirst);
+    } finally {
+      ctx.restore();
+    }
+  });
 });

@@ -17,9 +17,11 @@ export function mountHtmlDocument(html: string, options: DomOptions = {}) {
     HTMLInputElement: (globalThis as any).HTMLInputElement,
     HTMLTextAreaElement: (globalThis as any).HTMLTextAreaElement,
     HTMLAnchorElement: (globalThis as any).HTMLAnchorElement,
+    HTMLButtonElement: (globalThis as any).HTMLButtonElement,
     DocumentFragment: (globalThis as any).DocumentFragment,
     Event: (globalThis as any).Event,
     KeyboardEvent: (globalThis as any).KeyboardEvent,
+    MouseEvent: (globalThis as any).MouseEvent,
     IntersectionObserver: (globalThis as any).IntersectionObserver,
     fetch: globalThis.fetch,
     open: (globalThis as any).open,
@@ -50,9 +52,11 @@ export function mountHtmlDocument(html: string, options: DomOptions = {}) {
   (globalThis as any).HTMLInputElement = window.HTMLInputElement as any;
   (globalThis as any).HTMLTextAreaElement = window.HTMLTextAreaElement as any;
   (globalThis as any).HTMLAnchorElement = window.HTMLAnchorElement as any;
+  (globalThis as any).HTMLButtonElement = window.HTMLButtonElement as any;
   (globalThis as any).DocumentFragment = window.DocumentFragment as any;
   (globalThis as any).Event = window.Event as any;
   (globalThis as any).KeyboardEvent = window.KeyboardEvent as any;
+  (globalThis as any).MouseEvent = window.MouseEvent as any;
   (globalThis as any).IntersectionObserver = intersectionObserver as any;
   (globalThis as any).fetch = fetchMock as any;
   (window as any).fetch = fetchMock as any;
@@ -80,9 +84,11 @@ export function mountHtmlDocument(html: string, options: DomOptions = {}) {
     (globalThis as any).HTMLInputElement = previous.HTMLInputElement;
     (globalThis as any).HTMLTextAreaElement = previous.HTMLTextAreaElement;
     (globalThis as any).HTMLAnchorElement = previous.HTMLAnchorElement;
+    (globalThis as any).HTMLButtonElement = previous.HTMLButtonElement;
     (globalThis as any).DocumentFragment = previous.DocumentFragment;
     (globalThis as any).Event = previous.Event;
     (globalThis as any).KeyboardEvent = previous.KeyboardEvent;
+    (globalThis as any).MouseEvent = previous.MouseEvent;
     (globalThis as any).IntersectionObserver = previous.IntersectionObserver;
     (globalThis as any).fetch = previous.fetch;
     (globalThis as any).open = previous.open;

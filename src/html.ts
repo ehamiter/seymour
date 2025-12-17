@@ -1337,9 +1337,14 @@ export function renderHome(params: {
         entries.forEach((el, idx) => {
           el.addEventListener("click", (event) => {
             const target = event.target;
-            if (target instanceof HTMLAnchorElement || target instanceof HTMLButtonElement) return;
-            if (target instanceof Element && target.closest("a, button")) return;
+            // Don't mark as read if clicking on links or buttons
+            if (!target) return;
+            const tagName = target.tagName;
+            if (tagName === "A" || tagName === "BUTTON") return;
+            if (target.closest && target.closest("a, button")) return;
             setCurrent(idx);
+            // Mark as read on click to handle the last entry (which can't be scrolled past)
+            markRead(el, false);
           });
         });
 
