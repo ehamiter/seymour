@@ -11,6 +11,7 @@ export type FeedRow = {
   last_modified: string | null;
   last_fetched_at: string | null;
   fetch_error: string | null;
+  backoff_until: string | null;
   created_at: string;
   raw: unknown;
 };
@@ -71,6 +72,7 @@ function initSchema() {
       last_modified TEXT,
       last_fetched_at TEXT,
       fetch_error TEXT,
+      backoff_until TEXT,
       created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
       raw JSON
     );
@@ -109,6 +111,16 @@ function initSchema() {
 }
 
 initSchema();
+
+function migrateSchema() {
+  const cols = db.prepare(`PRAGMA table_info(feeds)`).all() as Array<{ name: string }>;
+  const hasBackoffUntil = cols.some((c) => c.name === "backoff_until");
+  if (!hasBackoffUntil) {
+    db.exec(`ALTER TABLE feeds ADD COLUMN backoff_until TEXT`);
+  }
+}
+
+migrateSchema();
 
 export function ensureFeed(url: string): FeedRow {
   const now = new Date().toISOString();
@@ -170,10 +182,20 @@ export function feedsForFetching(): FeedRow[] {
       `
       SELECT *
       FROM feeds
+      WHERE backoff_until IS NULL
+         OR backoff_until <= strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
       ORDER BY last_fetched_at IS NULL DESC, last_fetched_at ASC
     `,
     )
     .all() as FeedRow[];
+}
+
+export function setFeedBackoff(feedId: number, untilIso: string | null) {
+  db.prepare(`UPDATE feeds SET backoff_until = ? WHERE id = ?`).run(untilIso, feedId);
+}
+
+export function clearFeedBackoff(feedId: number) {
+  db.prepare(`UPDATE feeds SET backoff_until = NULL WHERE id = ?`).run(feedId);
 }
 
 export function markEntryRead(id: number): number {
@@ -274,6 +296,7 @@ export function recordFetchSuccess(
       last_modified = ?,
       last_fetched_at = ?,
       fetch_error = NULL,
+      backoff_until = NULL,
       raw = ?
     WHERE id = ?
   `);
@@ -355,7 +378,8 @@ export function touchFeedFetch(
       etag = ?,
       last_modified = ?,
       last_fetched_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
-      fetch_error = NULL
+      fetch_error = NULL,
+      backoff_until = NULL
     WHERE id = ?
   `,
   ).run(meta.etag, meta.lastModified, feedId);

@@ -28,6 +28,12 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
+function getBackoffMs(feedId: number): number | null {
+  const feed = findFeedById(feedId);
+  if (!feed?.backoff_until) return null;
+  return new Date(feed.backoff_until).getTime() - Date.now();
+}
+
 describe("parseRetryAfter", () => {
   it("parses seconds and HTTP date values", () => {
     expect(parseRetryAfter("120")).toBe(120000);
@@ -41,7 +47,6 @@ describe("parseRetryAfter", () => {
 describe("fetchAndStore", () => {
   it("stores responses and backs off when validators are missing", async () => {
     const feed = ensureFeed("https://fetch.example.com/rss");
-    const backoffs: Array<number> = [];
 
     globalThis.fetch = (async () => {
       return new Response(rssBody, {
@@ -50,14 +55,16 @@ describe("fetchAndStore", () => {
       });
     }) as any;
 
-    await fetchAndStore(feed, {
-      setBackoff: (_id, delay) => backoffs.push(delay),
-    });
+    await fetchAndStore(feed);
 
     const updated = findFeedById(feed.id)!;
     expect(updated.etag).toBeNull();
     expect(updated.last_modified).toBeNull();
-    expect(backoffs[0]).toBe(90 * 60 * 1000);
+
+    const backoffMs = getBackoffMs(feed.id);
+    expect(backoffMs).not.toBeNull();
+    expect(backoffMs!).toBeGreaterThan(80 * 60 * 1000);
+    expect(backoffMs!).toBeLessThanOrEqual(100 * 60 * 1000);
 
     const count = db.prepare("SELECT COUNT(*) AS c FROM entries").get() as { c: number };
     expect(count.c).toBe(1);
@@ -81,39 +88,62 @@ describe("fetchAndStore", () => {
     expect(updated.etag).toBe("new");
     expect(updated.last_fetched_at).toBeTruthy();
     expect(updated.fetch_error).toBeNull();
+    expect(updated.backoff_until).toBeNull();
   });
 
   it("backs off on 429 responses using Retry-After", async () => {
     const feed = ensureFeed("https://fetch.example.com/rss");
-    const backoffs: Array<number> = [];
 
     globalThis.fetch = (async () => {
       return new Response("", { status: 429, headers: { "Retry-After": "120" } });
     }) as any;
 
-    await fetchAndStore(feed, {
-      setBackoff: (_id, delay) => backoffs.push(delay),
-    });
+    await fetchAndStore(feed);
 
     const updated = findFeedById(feed.id)!;
     expect(updated.fetch_error).toContain("HTTP 429");
-    expect(backoffs[0]).toBe(120000);
+
+    const backoffMs = getBackoffMs(feed.id);
+    expect(backoffMs).not.toBeNull();
+    expect(backoffMs!).toBeGreaterThan(100000);
+    expect(backoffMs!).toBeLessThanOrEqual(140000);
   });
 
-  it("records errors and applies error backoff", async () => {
+  it("records errors and applies error backoff for remote errors", async () => {
     const feed = ensureFeed("https://fetch.example.com/rss");
-    const backoffs: Array<number> = [];
 
     globalThis.fetch = (async () => {
-      throw new Error("boom");
+      throw new Error("HTTP 500 boom");
     }) as any;
 
-    await fetchAndStore(feed, {
-      setBackoff: (_id, delay) => backoffs.push(delay),
-    });
+    await fetchAndStore(feed);
 
     const updated = findFeedById(feed.id)!;
     expect(updated.fetch_error).toContain("boom");
-    expect(backoffs[0]).toBe(60 * 60 * 1000);
+
+    const backoffMs = getBackoffMs(feed.id);
+    expect(backoffMs).not.toBeNull();
+    expect(backoffMs!).toBeGreaterThan(50 * 60 * 1000);
+    expect(backoffMs!).toBeLessThanOrEqual(70 * 60 * 1000);
+  });
+
+  it("applies shorter backoff for local/network errors", async () => {
+    const feed = ensureFeed("https://fetch.example.com/rss");
+
+    globalThis.fetch = (async () => {
+      const err = new Error("fetch failed");
+      err.name = "TypeError";
+      throw err;
+    }) as any;
+
+    await fetchAndStore(feed);
+
+    const updated = findFeedById(feed.id)!;
+    expect(updated.fetch_error).toContain("Network/timeout error");
+
+    const backoffMs = getBackoffMs(feed.id);
+    expect(backoffMs).not.toBeNull();
+    expect(backoffMs!).toBeGreaterThan(4 * 60 * 1000);
+    expect(backoffMs!).toBeLessThanOrEqual(6 * 60 * 1000);
   });
 });

@@ -4,6 +4,7 @@ import {
   findFeedById,
   recordFetchError,
   recordFetchSuccess,
+  setFeedBackoff,
   touchFeedFetch,
 } from "./db";
 import { parseFeed } from "./feed-parser";
@@ -15,7 +16,8 @@ const USER_AGENT =
   process.env.HTTP_USER_AGENT ??
   "Seymour/0.1 (+https://github.com/ehamiter/seymour; respectful rss feed fetcher)";
 const RETRY_AFTER_FALLBACK_MS = 2 * 60 * 60 * 1000; // Slow down hard on 429s when no hint is provided.
-const ERROR_BACKOFF_MS = 60 * 60 * 1000; // Avoid hammering a failing feed.
+const REMOTE_ERROR_BACKOFF_MS = 60 * 60 * 1000; // Remote HTTP errors (4xx/5xx) - avoid hammering a broken feed.
+const LOCAL_ERROR_BACKOFF_MS = 5 * 60 * 1000; // Local/network/timeout errors - retry sooner.
 const NO_VALIDATOR_BACKOFF_MS = 90 * 60 * 1000; // Slow feeds that never send ETag/Last-Modified.
 
 export type FeedFetcher = {
@@ -28,27 +30,6 @@ export function startFeedFetcher(intervalMs = DEFAULT_INTERVAL_MS): FeedFetcher 
   let running = false;
   let pendingAll = false;
   const pendingFeeds = new Set<number>();
-  const backoffUntil = new Map<number, number>();
-
-  const getBackoffRemaining = (feedId: number): number => {
-    const until = backoffUntil.get(feedId);
-    if (!until) return 0;
-    const remaining = until - Date.now();
-    if (remaining <= 0) {
-      backoffUntil.delete(feedId);
-      return 0;
-    }
-    return remaining;
-  };
-
-  const setBackoff = (feedId: number, delayMs: number) => {
-    const jitter = Math.floor(delayMs * 0.1 * Math.random());
-    const until = Date.now() + delayMs + jitter;
-    const current = backoffUntil.get(feedId) ?? 0;
-    if (until > current) {
-      backoffUntil.set(feedId, until);
-    }
-  };
 
   const schedule = () => {
     if (running) return;
@@ -68,8 +49,7 @@ export function startFeedFetcher(intervalMs = DEFAULT_INTERVAL_MS): FeedFetcher 
       pendingAll = false;
       const feeds = feedsForFetching();
       for (const feed of feeds) {
-        if (getBackoffRemaining(feed.id) > 0) continue;
-        await fetchAndStore(feed, { setBackoff });
+        await fetchAndStore(feed);
       }
     }
 
@@ -79,8 +59,8 @@ export function startFeedFetcher(intervalMs = DEFAULT_INTERVAL_MS): FeedFetcher 
       for (const id of ids) {
         const feed = findFeedById(id);
         if (!feed) continue;
-        if (getBackoffRemaining(feed.id) > 0) continue;
-        await fetchAndStore(feed, { setBackoff });
+        if (isBackedOff(feed)) continue;
+        await fetchAndStore(feed);
       }
     }
   };
@@ -90,7 +70,6 @@ export function startFeedFetcher(intervalMs = DEFAULT_INTERVAL_MS): FeedFetcher 
     schedule();
   }, intervalMs);
 
-  // Kick off immediately.
   pendingAll = true;
   schedule();
 
@@ -107,13 +86,36 @@ export function startFeedFetcher(intervalMs = DEFAULT_INTERVAL_MS): FeedFetcher 
   };
 }
 
-async function fetchAndStore(
-  feed: FeedRow,
-  options: { setBackoff?: (feedId: number, delayMs: number) => void } = {},
-) {
+function isBackedOff(feed: FeedRow): boolean {
+  if (!feed.backoff_until) return false;
+  return new Date(feed.backoff_until) > new Date();
+}
+
+function persistBackoff(feedId: number, delayMs: number) {
+  const jitter = Math.floor(delayMs * 0.1 * Math.random());
+  const until = new Date(Date.now() + delayMs + jitter).toISOString();
+  setFeedBackoff(feedId, until);
+}
+
+function isLocalOrTimeoutError(err: Error): boolean {
+  const msg = err.message.toLowerCase();
+  const name = err.name.toLowerCase();
+  return (
+    name === "aborterror" ||
+    msg.includes("aborted") ||
+    msg.includes("timeout") ||
+    msg.includes("network") ||
+    msg.includes("econnrefused") ||
+    msg.includes("enotfound") ||
+    msg.includes("enetunreach") ||
+    msg.includes("unable to connect") ||
+    msg.includes("fetch failed")
+  );
+}
+
+async function fetchAndStore(feed: FeedRow) {
   const fetchedAt = new Date().toISOString();
-  const setBackoff = options.setBackoff;
-  
+
   let lastError: Error | null = null;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -127,55 +129,61 @@ async function fetchAndStore(
 
       const res = await fetchWithTimeout(feed.url, { headers, redirect: "follow" }, FETCH_TIMEOUT_MS);
 
-    const etag = res.headers.get("etag");
-    const lastModified = res.headers.get("last-modified");
+      const etag = res.headers.get("etag");
+      const lastModified = res.headers.get("last-modified");
 
-    if (res.status === 429) {
-      const retryMs = parseRetryAfter(res.headers.get("retry-after")) ?? RETRY_AFTER_FALLBACK_MS;
-      if (setBackoff) setBackoff(feed.id, retryMs);
-      const nextAttempt = new Date(Date.now() + retryMs).toISOString();
-      recordFetchError(feed.id, `HTTP 429 Too Many Requests; backing off until ${nextAttempt}`);
-      return;
-    }
+      if (res.status === 429) {
+        const retryMs = parseRetryAfter(res.headers.get("retry-after")) ?? RETRY_AFTER_FALLBACK_MS;
+        persistBackoff(feed.id, retryMs);
+        const nextAttempt = new Date(Date.now() + retryMs).toISOString();
+        recordFetchError(feed.id, `HTTP 429 Too Many Requests; backing off until ${nextAttempt}`);
+        return;
+      }
 
-    if (res.status === 304) {
-      touchFeedFetch(feed.id, { etag: etag ?? feed.etag, lastModified: lastModified ?? feed.last_modified });
-      return;
-    }
+      if (res.status === 304) {
+        touchFeedFetch(feed.id, { etag: etag ?? feed.etag, lastModified: lastModified ?? feed.last_modified });
+        return;
+      }
 
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status} ${res.statusText}`);
-    }
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status} ${res.statusText}`);
+      }
 
-    const body = await res.text();
-    const parsed = parseFeed(body);
-    recordFetchSuccess(feed, parsed, parsed.entries, {
-      etag: etag ?? feed.etag,
-      lastModified: lastModified ?? feed.last_modified,
-      fetchedAt,
-    });
+      const body = await res.text();
+      const parsed = parseFeed(body);
+      recordFetchSuccess(feed, parsed, parsed.entries, {
+        etag: etag ?? feed.etag,
+        lastModified: lastModified ?? feed.last_modified,
+        fetchedAt,
+      });
 
-      if (!etag && !lastModified && setBackoff) {
-        setBackoff(feed.id, NO_VALIDATOR_BACKOFF_MS);
+      if (!etag && !lastModified) {
+        persistBackoff(feed.id, NO_VALIDATOR_BACKOFF_MS);
       }
       return;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       if (attempt < MAX_RETRIES) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
         continue;
       }
     }
   }
-  
+
   if (lastError) {
     const message = lastError.message;
+    const isLocal = isLocalOrTimeoutError(lastError);
+    const backoffMs = isLocal ? LOCAL_ERROR_BACKOFF_MS : REMOTE_ERROR_BACKOFF_MS;
+    const backoffMins = Math.round(backoffMs / 60000);
+
     console.error(`fetch failed for feed ${feed.url} after ${MAX_RETRIES + 1} attempts:`, message);
-    const note = setBackoff
-      ? `${message.slice(0, 400)}; backing off for ${Math.round(ERROR_BACKOFF_MS / 60000)}m`
-      : message.slice(0, 500);
+
+    const note = isLocal
+      ? `Network/timeout error; will retry in ${backoffMins}m`
+      : `${message.slice(0, 400)}; backing off for ${backoffMins}m`;
+
     recordFetchError(feed.id, note);
-    if (setBackoff) setBackoff(feed.id, ERROR_BACKOFF_MS);
+    persistBackoff(feed.id, backoffMs);
   }
 }
 
