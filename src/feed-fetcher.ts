@@ -9,7 +9,8 @@ import {
 import { parseFeed } from "./feed-parser";
 
 const DEFAULT_INTERVAL_MS = Number(process.env.FETCH_INTERVAL_MS ?? 30 * 60 * 1000);
-const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS ?? 45000);
+const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS ?? 90000);
+const MAX_RETRIES = 2;
 const USER_AGENT =
   process.env.HTTP_USER_AGENT ??
   "Seymour/0.1 (+https://github.com/ehamiter/seymour; respectful rss feed fetcher)";
@@ -112,16 +113,19 @@ async function fetchAndStore(
 ) {
   const fetchedAt = new Date().toISOString();
   const setBackoff = options.setBackoff;
-  try {
-    const headers: HeadersInit = {
-      "User-Agent": USER_AGENT,
-      Accept: "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8",
-    };
+  
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const headers: HeadersInit = {
+        "User-Agent": USER_AGENT,
+        Accept: "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8",
+      };
 
-    if (feed.etag) headers["If-None-Match"] = feed.etag;
-    if (feed.last_modified) headers["If-Modified-Since"] = feed.last_modified;
+      if (feed.etag) headers["If-None-Match"] = feed.etag;
+      if (feed.last_modified) headers["If-Modified-Since"] = feed.last_modified;
 
-    const res = await fetchWithTimeout(feed.url, { headers, redirect: "follow" }, FETCH_TIMEOUT_MS);
+      const res = await fetchWithTimeout(feed.url, { headers, redirect: "follow" }, FETCH_TIMEOUT_MS);
 
     const etag = res.headers.get("etag");
     const lastModified = res.headers.get("last-modified");
@@ -151,12 +155,22 @@ async function fetchAndStore(
       fetchedAt,
     });
 
-    if (!etag && !lastModified && setBackoff) {
-      setBackoff(feed.id, NO_VALIDATOR_BACKOFF_MS);
+      if (!etag && !lastModified && setBackoff) {
+        setBackoff(feed.id, NO_VALIDATOR_BACKOFF_MS);
+      }
+      return;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < MAX_RETRIES) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        continue;
+      }
     }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`fetch failed for feed ${feed.url}:`, message);
+  }
+  
+  if (lastError) {
+    const message = lastError.message;
+    console.error(`fetch failed for feed ${feed.url} after ${MAX_RETRIES + 1} attempts:`, message);
     const note = setBackoff
       ? `${message.slice(0, 400)}; backing off for ${Math.round(ERROR_BACKOFF_MS / 60000)}m`
       : message.slice(0, 500);
