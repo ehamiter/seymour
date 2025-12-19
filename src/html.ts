@@ -537,7 +537,7 @@ export function renderHome(params: {
       }
 
       .summary > * + * {
-        margin-top: 0.35rem;
+        margin-top: 0.5rem;
       }
 
       .summary > :where(p, ul, ol, blockquote, pre, h1, h2, h3, h4, h5, h6) {
@@ -545,7 +545,7 @@ export function renderHome(params: {
       }
 
       .summary p {
-        margin: 0;
+        margin: 0.75rem 0;
       }
 
       .summary a {
@@ -554,7 +554,7 @@ export function renderHome(params: {
 
       .summary ul,
       .summary ol {
-        margin: 0;
+        margin: 0.75rem 0;
         padding-left: 1.2rem;
         display: grid;
         gap: 0.2rem;
@@ -566,7 +566,7 @@ export function renderHome(params: {
 
       .summary blockquote {
         border-left: 3px solid var(--border);
-        margin: 0;
+        margin: 0.75rem 0;
         padding-left: 0.75rem;
         color: var(--ink);
       }
@@ -575,6 +575,7 @@ export function renderHome(params: {
         background: #f4f6fb;
         border: 1px solid var(--border);
         border-radius: 8px;
+        margin: 0.75rem 0;
         padding: 0.6rem;
         overflow-x: auto;
         min-width: 0;
@@ -588,10 +589,20 @@ export function renderHome(params: {
         padding: 0.15rem 0.35rem;
       }
 
+      .summary h1,
+      .summary h2,
+      .summary h3,
+      .summary h4,
+      .summary h5,
+      .summary h6 {
+        margin: 0.75rem 0;
+      }
+
       .summary img {
         max-width: 100%;
         height: auto;
         display: block;
+        margin: 0.75rem 0;
         border-radius: 8px;
         border: 1px solid var(--border);
       }
@@ -1624,6 +1635,30 @@ export function renderHome(params: {
             el.replaceWith(frag);
           };
 
+          const isIgnorableText = (node) =>
+            node?.nodeType === Node.TEXT_NODE && !(node.textContent || "").trim();
+
+          const findSibling = (node, direction) => {
+            let current = node;
+            while (current) {
+              current = direction === "prev" ? current.previousSibling : current.nextSibling;
+              if (!current) return null;
+              if (!isIgnorableText(current)) return current;
+            }
+            return null;
+          };
+
+          const isInlineAnchorBreak = (el) => {
+            const prev = findSibling(el, "prev");
+            const next = findSibling(el, "next");
+            const prevIsBreak = prev?.nodeType === Node.ELEMENT_NODE && prev.tagName === "BR";
+            const nextIsBreak = next?.nodeType === Node.ELEMENT_NODE && next.tagName === "BR";
+            if (prevIsBreak || nextIsBreak) return false;
+            const prevIsAnchor = prev?.nodeType === Node.ELEMENT_NODE && prev.tagName === "A";
+            const nextIsAnchor = next?.nodeType === Node.ELEMENT_NODE && next.tagName === "A";
+            return prevIsAnchor || nextIsAnchor;
+          };
+
           const cleanse = (node) => {
             if (node.nodeType === Node.ELEMENT_NODE) {
               const el = node;
@@ -1632,9 +1667,7 @@ export function renderHome(params: {
                 return;
               }
               if (el.tagName === "BR") {
-                // RSS/Atom summaries often sprinkle <br> tags around short "visit/read more" links,
-                // which looks awkward in the compact entry view. Treat them as spaces instead.
-                if (!el.closest("PRE")) {
+                if (!el.closest("PRE") && isInlineAnchorBreak(el)) {
                   el.replaceWith(document.createTextNode(" "));
                 }
                 return;
@@ -1686,26 +1719,53 @@ export function renderHome(params: {
               return html ? "<p>" + html + "</p>" : "";
             }
 
-            const lines = html
+            const rawLines = html
               .split(/\\n+/)
               .map((line) => line.trim())
               .filter(Boolean);
 
-            if (lines.length === 0) return "";
+            if (rawLines.length === 0) return "";
 
-            const bulletPattern = /^[-*•]\\s*/;
-            if (lines.every((line) => bulletPattern.test(line))) {
-              const items = lines.map((line) => line.replace(bulletPattern, "").trim());
-              return (
-                "<ul>" +
-                items
-                  .map((item) => "<li>" + item + "</li>")
-                  .join("") +
-                "</ul>"
-              );
+            const lines = [];
+            for (let i = 0; i < rawLines.length; i += 1) {
+              const line = rawLines[i];
+              if (/^\\d+[.)]$/.test(line) && i + 1 < rawLines.length) {
+                lines.push(line + " " + rawLines[i + 1]);
+                i += 1;
+                continue;
+              }
+              lines.push(line);
             }
 
-            return "<p>" + lines.join("</p><p>") + "</p>";
+            const bulletPattern = /^[-*•]\\s+/;
+            const numberPattern = /^\\d+[.)]\\s+/;
+            const blocks = [];
+
+            for (let i = 0; i < lines.length; ) {
+              const line = lines[i];
+              if (bulletPattern.test(line)) {
+                const items = [];
+                while (i < lines.length && bulletPattern.test(lines[i])) {
+                  items.push(lines[i].replace(bulletPattern, "").trim());
+                  i += 1;
+                }
+                blocks.push("<ul>" + items.map((item) => "<li>" + item + "</li>").join("") + "</ul>");
+                continue;
+              }
+              if (numberPattern.test(line)) {
+                const items = [];
+                while (i < lines.length && numberPattern.test(lines[i])) {
+                  items.push(lines[i].replace(numberPattern, "").trim());
+                  i += 1;
+                }
+                blocks.push("<ol>" + items.map((item) => "<li>" + item + "</li>").join("") + "</ol>");
+                continue;
+              }
+              blocks.push("<p>" + line + "</p>");
+              i += 1;
+            }
+
+            return blocks.join("");
           };
 
       const sanitize = (html) => {

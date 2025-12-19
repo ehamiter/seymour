@@ -120,7 +120,7 @@ describe("renderHome", () => {
     }
   });
 
-  it("collapses <br> tags in hydrated summaries into spaces", () => {
+  it("collapses link-adjacent <br> tags in hydrated summaries into spaces", () => {
     const html = renderHome({
       entries: [
         {
@@ -139,6 +139,50 @@ describe("renderHome", () => {
       expect((summary?.textContent ?? "").replace(/\\s+/g, " ").trim()).toBe(
         "Visit Uncrate for the full post.",
       );
+    } finally {
+      ctx.restore();
+    }
+  });
+
+  it("preserves <br> line breaks that are not link separators", () => {
+    const html = renderHome({
+      entries: [
+        {
+          ...baseEntry,
+          summary: "<p>First line<br>Second line</p>",
+        },
+      ],
+      feeds: [baseFeed],
+      flash: null,
+    });
+
+    const ctx = mountHtmlDocument(html);
+    try {
+      const summary = ctx.document.querySelector(".summary");
+      expect(summary?.innerHTML.toLowerCase()).toContain("<br");
+    } finally {
+      ctx.restore();
+    }
+  });
+
+  it("formats numbered plain-text lists into ordered lists", () => {
+    const html = renderHome({
+      entries: [
+        {
+          ...baseEntry,
+          summary: "1.\nFirst item\n2.\nSecond item",
+        },
+      ],
+      feeds: [baseFeed],
+      flash: null,
+    });
+
+    const ctx = mountHtmlDocument(html);
+    try {
+      const summary = ctx.document.querySelector(".summary");
+      expect(summary?.innerHTML).toContain("<ol>");
+      expect(summary?.innerHTML).toContain("<li>First item</li>");
+      expect(summary?.innerHTML).toContain("<li>Second item</li>");
     } finally {
       ctx.restore();
     }
