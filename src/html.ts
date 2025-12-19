@@ -528,13 +528,20 @@ export function renderHome(params: {
       }
 
       .summary {
-        display: grid;
-        gap: 0.35rem;
+        display: block;
         color: var(--muted);
         line-height: 1.5;
         overflow-wrap: anywhere;
         word-break: break-word;
         min-width: 0;
+      }
+
+      .summary > * + * {
+        margin-top: 0.35rem;
+      }
+
+      .summary > :where(p, ul, ol, blockquote, pre, h1, h2, h3, h4, h5, h6) {
+        margin: 0;
       }
 
       .summary p {
@@ -547,8 +554,8 @@ export function renderHome(params: {
 
       .summary ul,
       .summary ol {
-        margin: 0.25rem 0 0.25rem 1.2rem;
-        padding-left: 1rem;
+        margin: 0;
+        padding-left: 1.2rem;
         display: grid;
         gap: 0.2rem;
       }
@@ -1622,6 +1629,14 @@ export function renderHome(params: {
               const el = node;
               if (el.tagName === "STYLE") {
                 wrapStyleAsPre(el);
+                return;
+              }
+              if (el.tagName === "BR") {
+                // RSS/Atom summaries often sprinkle <br> tags around short "visit/read more" links,
+                // which looks awkward in the compact entry view. Treat them as spaces instead.
+                if (!el.closest("PRE")) {
+                  el.replaceWith(document.createTextNode(" "));
+                }
                 return;
               }
               if (!allowedTags.has(el.tagName)) {

@@ -119,6 +119,30 @@ describe("renderHome", () => {
       ctx.restore();
     }
   });
+
+  it("collapses <br> tags in hydrated summaries into spaces", () => {
+    const html = renderHome({
+      entries: [
+        {
+          ...baseEntry,
+          summary: '<p>Visit<br><a href="https://uncrate.example/">Uncrate</a><br>for the full post.</p>',
+        },
+      ],
+      feeds: [baseFeed],
+      flash: null,
+    });
+
+    const ctx = mountHtmlDocument(html);
+    try {
+      const summary = ctx.document.querySelector(".summary");
+      expect(summary?.innerHTML.toLowerCase()).not.toContain("<br");
+      expect((summary?.textContent ?? "").replace(/\\s+/g, " ").trim()).toBe(
+        "Visit Uncrate for the full post.",
+      );
+    } finally {
+      ctx.restore();
+    }
+  });
 });
 
 describe("sanitizeSummaryHtml", () => {
