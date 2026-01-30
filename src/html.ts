@@ -1366,6 +1366,119 @@ export function renderHome(params: {
           });
         });
 
+        // Infinite scroll: load more entries when user approaches the end
+        let loading = false;
+        const loadMoreEntries = async () => {
+          if (loading || entries.length === 0) return;
+          loading = true;
+          
+          const lastEntry = entries[entries.length - 1];
+          if (!lastEntry) return;
+          
+          const url = new URL(window.location.href);
+          const feedId = url.searchParams.get("feed");
+          const showAll = url.searchParams.get("show") === "all";
+          const beforeSortKey = lastEntry.dataset.sortKey;
+          
+          const queryParams = new URLSearchParams({
+            before: beforeSortKey,
+            ...(feedId ? { feed: feedId } : {}),
+            ...(showAll ? { show: "all" } : {}),
+          });
+          
+          try {
+            const response = await fetch(\`/entries?\${queryParams}\`);
+            if (!response.ok) {
+              loading = false;
+              return;
+            }
+            
+            const newEntries = await response.json();
+            if (newEntries.length === 0) {
+              loading = false;
+              return;
+            }
+            
+            // Render new entries as HTML articles
+            const entriesSection = document.querySelector("section.entries");
+            if (!entriesSection) {
+              loading = false;
+              return;
+            }
+            
+            newEntries.forEach((entry) => {
+              const article = document.createElement("article");
+              article.className = "entry";
+              article.tabIndex = -1;
+              article.dataset.entryId = entry.id;
+              article.dataset.feedId = entry.feed_id;
+              article.dataset.sortKey = entry.sort_key;
+              article.dataset.read = entry.unread ? "0" : "1";
+              
+              const date = entry.published_at || entry.fetched_at;
+              const dateStr = new Date(date).toLocaleDateString("default", {
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+              
+              const summaryPreview = entry.summary
+                ? entry.summary.replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ").trim().slice(0, 320)
+                : "";
+              
+              const title = entry.title ? entry.title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;") : "(untitled)";
+              const feedTitle = entry.feed_title ? entry.feed_title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : entry.feed_url;
+              
+              article.innerHTML = \`
+                <header>
+                  <span class="feed">\${feedTitle}</span>
+                  <time datetime="\${date}">\${dateStr}</time>
+                </header>
+                <h3><a href="\${entry.url || entry.feed_url}" target="_blank" rel="noreferrer">\${title}</a></h3>
+                \${summaryPreview ? \`<div class="summary">\${summaryPreview}</div>\` : ""}
+              \`;
+              
+              entriesSection.appendChild(article);
+              
+              // Register click handler
+              article.addEventListener("click", (event) => {
+                const target = event.target;
+                if (!target) return;
+                const tagName = target.tagName;
+                if (tagName === "A" || tagName === "BUTTON") return;
+                if (target.closest && target.closest("a, button")) return;
+                const idx = entries.length;
+                setCurrent(idx);
+                markRead(article, false);
+              });
+              
+              // Observe new entry for auto-read
+              io.observe(article);
+              highlightIO.observe(article);
+              
+              entries.push(article);
+            });
+          } catch {
+            // Silently fail if loading more entries doesn't work
+          } finally {
+            loading = false;
+          }
+        };
+        
+        // Check if we need to load more entries when user scrolls or navigates
+        if (entriesContainer instanceof HTMLElement) {
+          entriesContainer.addEventListener("scroll", () => {
+            const scrollTop = entriesContainer.scrollTop;
+            const scrollHeight = entriesContainer.scrollHeight;
+            const clientHeight = entriesContainer.clientHeight;
+            // Load when within 500px of the bottom
+            if (scrollHeight - (scrollTop + clientHeight) < 500) {
+              loadMoreEntries();
+            }
+          }, { passive: true });
+        }
+
         window.addEventListener("keydown", (event) => {
           if (settingsVisible()) {
             if (event.key === "Escape") {
@@ -1391,7 +1504,13 @@ export function renderHome(params: {
             toggleShortcuts();
           } else if (event.key === "j") {
             event.preventDefault();
-            focusEntry(Math.min(entries.length - 1, pointer + 1));
+            markRead(entries[pointer], true);
+            const nextIdx = Math.min(entries.length - 1, pointer + 1);
+            focusEntry(nextIdx);
+            // Load more if we're at the end
+            if (nextIdx === entries.length - 1) {
+              loadMoreEntries();
+            }
           } else if (event.key === "k") {
             event.preventDefault();
             focusEntry(Math.max(0, pointer - 1));

@@ -74,14 +74,20 @@ describe("keyboard shortcuts", () => {
       const entryEls = Array.from(ctx.document.querySelectorAll<HTMLElement>("article.entry"));
       expect(entryEls.length).toBe(2);
 
-      // Move down to the second entry.
+      // Move down to the second entry (which marks the first as read).
       ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "j" }));
       expect(ctx.document.activeElement).toBe(entryEls[1]);
+      expect(entryEls[0].dataset.read).toBe("1");
+      // First fetch call marks the first entry as read
+      const markReadCall = fetchCalls.find((call) => String(call.input).includes(`/entries/${entryEls[0].dataset.entryId}/read`));
+      expect(markReadCall).toBeDefined();
 
       // Mark the focused entry as read.
       ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "m" }));
       expect(entryEls[1].dataset.read).toBe("1");
-      expect(String(fetchCalls[0]?.input)).toContain(`/entries/${entryEls[1].dataset.entryId}/read`);
+      // Should have a fetch call to mark the second entry as read
+      const markReadCall2 = fetchCalls.find((call) => String(call.input).includes(`/entries/${entryEls[1].dataset.entryId}/read`));
+      expect(markReadCall2).toBeDefined();
 
       // Mark entries above pivot as read.
       ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "M" }));

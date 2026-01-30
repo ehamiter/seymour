@@ -108,6 +108,10 @@ async function route(req: Request) {
     return respondAfterAction(req);
   }
 
+  if (req.method === "GET" && url.pathname === "/entries") {
+    return handleListEntries(url);
+  }
+
   return new Response("Not found", { status: 404 });
 }
 
@@ -173,6 +177,26 @@ async function handleUpdateFeed(req: Request, feedId: number) {
     const message = err instanceof Error ? err.message : "Update failed";
     return redirect("/?flash=" + encodeURIComponent(message));
   }
+}
+
+function handleListEntries(url: URL) {
+  const feedParam = url.searchParams.get("feed");
+  const showParam = url.searchParams.get("show");
+  const beforeSortKey = url.searchParams.get("before");
+  const selectedFeedId = feedParam ? Number(feedParam) : undefined;
+  const showAll = showParam === "all";
+  const entries = listEntries(
+    PAGE_SIZE,
+    beforeSortKey ? Number(beforeSortKey) : undefined,
+    Number.isFinite(selectedFeedId) ? selectedFeedId : undefined,
+    !showAll
+  );
+  return new Response(JSON.stringify(entries), {
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    },
+  });
 }
 
 function renderHomePage(url: URL) {
