@@ -1430,13 +1430,14 @@ export function renderHome(params: {
               const title = entry.title ? entry.title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;") : "(untitled)";
               const feedTitle = entry.feed_title ? entry.feed_title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : entry.feed_url;
               
+              const rawSummary = entry.summary ? encodeURIComponent(entry.summary) : "";
               article.innerHTML = \`
                 <header>
                   <span class="feed">\${feedTitle}</span>
                   <time datetime="\${date}">\${dateStr}</time>
                 </header>
                 <h3><a href="\${entry.url || entry.feed_url}" target="_blank" rel="noreferrer">\${title}</a></h3>
-                \${summaryPreview ? \`<div class="summary">\${summaryPreview}</div>\` : ""}
+                \${summaryPreview ? \`<div class="summary" data-raw="\${rawSummary}">\${summaryPreview}</div>\` : ""}
               \`;
               
               entriesSection.appendChild(article);
@@ -1459,6 +1460,9 @@ export function renderHome(params: {
               
               entries.push(article);
             });
+            if (typeof window.__hydrateSummaries === "function") {
+              window.__hydrateSummaries();
+            }
           } catch {
             // Silently fail if loading more entries doesn't work
           } finally {
@@ -1935,6 +1939,9 @@ export function renderHome(params: {
           } else {
             hydrateSummaries();
           }
+
+          // Expose for infinite-scroll entries loaded after DOM ready
+          window.__hydrateSummaries = hydrateSummaries;
         })();
       })();
     </script>
