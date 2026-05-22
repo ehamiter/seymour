@@ -27,6 +27,7 @@ export type EntryRow = {
   published_at: string | null;
   fetched_at: string;
   read_at: string | null;
+  starred_at: string | null;
   sort_key: number;
   unread: number;
   raw: unknown;
@@ -113,10 +114,14 @@ function initSchema() {
 initSchema();
 
 function migrateSchema() {
-  const cols = db.prepare(`PRAGMA table_info(feeds)`).all() as Array<{ name: string }>;
-  const hasBackoffUntil = cols.some((c) => c.name === "backoff_until");
-  if (!hasBackoffUntil) {
+  const feedCols = db.prepare(`PRAGMA table_info(feeds)`).all() as Array<{ name: string }>;
+  if (!feedCols.some((c) => c.name === "backoff_until")) {
     db.exec(`ALTER TABLE feeds ADD COLUMN backoff_until TEXT`);
+  }
+
+  const entryCols = db.prepare(`PRAGMA table_info(entries)`).all() as Array<{ name: string }>;
+  if (!entryCols.some((c) => c.name === "starred_at")) {
+    db.exec(`ALTER TABLE entries ADD COLUMN starred_at TEXT`);
   }
 }
 
@@ -365,6 +370,34 @@ export function recentEntries(limit = 100) {
     `,
     )
     .all(limit) as Array<EntryRow & { feed_title: string | null; feed_url: string }>;
+}
+
+export function toggleStarEntry(id: number): boolean {
+  const row = db.prepare(`SELECT starred_at FROM entries WHERE id = ?`).get(id) as { starred_at: string | null } | null;
+  if (!row) return false;
+  if (row.starred_at) {
+    db.prepare(`UPDATE entries SET starred_at = NULL WHERE id = ?`).run(id);
+    return false;
+  }
+  db.prepare(`UPDATE entries SET starred_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`).run(id);
+  return true;
+}
+
+export function listStarredEntries(limit = 50, beforeSortKey?: number) {
+  const params: unknown[] = [];
+  let sql = `
+    SELECT e.*, f.title AS feed_title, f.url AS feed_url
+    FROM entries e
+    JOIN feeds f ON f.id = e.feed_id
+    WHERE e.starred_at IS NOT NULL
+  `;
+  if (typeof beforeSortKey === "number") {
+    sql += " AND e.sort_key < ?";
+    params.push(beforeSortKey);
+  }
+  sql += " ORDER BY e.sort_key DESC LIMIT ?";
+  params.push(limit);
+  return db.prepare(sql).all(...params) as Array<EntryRow & { feed_title: string | null; feed_url: string }>;
 }
 
 export function touchFeedFetch(

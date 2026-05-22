@@ -29,6 +29,7 @@ const entries = [
     published_at: "2024-01-02T00:00:00.000Z",
     fetched_at: "2024-01-02T00:00:00.000Z",
     read_at: null,
+    starred_at: null,
     sort_key: 2,
     unread: 1,
     raw: {},
@@ -46,6 +47,7 @@ const entries = [
     published_at: "2024-01-01T00:00:00.000Z",
     fetched_at: "2024-01-01T00:00:00.000Z",
     read_at: null,
+    starred_at: null,
     sort_key: 1,
     unread: 1,
     raw: {},
@@ -139,6 +141,52 @@ describe("keyboard shortcuts", () => {
 
       ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "Escape" }));
       expect(overlay?.hasAttribute("hidden")).toBe(true);
+    } finally {
+      ctx.restore();
+    }
+  });
+
+  it("toggles star on current entry with 's' key", async () => {
+    const html = renderHome({ entries, feeds: [feed] });
+    const fetchCalls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const fetchMock: typeof fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      fetchCalls.push({ input, init });
+      return new Response(JSON.stringify({ starred: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as any;
+
+    const ctx = mountHtmlDocument(html, { fetchImpl: fetchMock });
+    try {
+      const entryEls = Array.from(ctx.document.querySelectorAll<HTMLElement>("article.entry"));
+      expect(entryEls[0].dataset.starred).toBe("0");
+
+      ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "s" }));
+
+      const starCall = fetchCalls.find((c) => String(c.input).includes("/star"));
+      expect(starCall).toBeDefined();
+
+      // Wait for optimistic update and fetch response
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(entryEls[0].dataset.starred).toBe("1");
+    } finally {
+      ctx.restore();
+    }
+  });
+
+  it("navigates to favorites with 'f' key", () => {
+    const html = renderHome({ entries, feeds: [feed] });
+    const ctx = mountHtmlDocument(html);
+    try {
+      let navigatedTo: string | undefined;
+      Object.defineProperty(ctx.window, "location", {
+        value: { ...ctx.window.location, set href(url: string) { navigatedTo = url; } },
+        writable: true,
+      });
+      ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "f" }));
+      expect(navigatedTo).toBe("/?show=favorites");
     } finally {
       ctx.restore();
     }
