@@ -11,6 +11,8 @@ import {
   updateFeed,
   findFeedById,
   findFeedByUrl,
+  toggleStarEntry,
+  listStarredEntries,
 } from "./db";
 import { startFeedFetcher } from "./feed-fetcher";
 import { renderHome } from "./html";
@@ -112,6 +114,15 @@ async function route(req: Request) {
     return handleListEntries(url);
   }
 
+  const starMatch = url.pathname.match(/^\/entries\/(\d+)\/star$/);
+  if (req.method === "POST" && starMatch) {
+    const id = Number(starMatch[1]);
+    const starred = toggleStarEntry(id);
+    return new Response(JSON.stringify({ starred }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   return new Response("Not found", { status: 404 });
 }
 
@@ -185,12 +196,11 @@ function handleListEntries(url: URL) {
   const beforeSortKey = url.searchParams.get("before");
   const selectedFeedId = feedParam ? Number(feedParam) : undefined;
   const showAll = showParam === "all";
-  const entries = listEntries(
-    PAGE_SIZE,
-    beforeSortKey ? Number(beforeSortKey) : undefined,
-    Number.isFinite(selectedFeedId) ? selectedFeedId : undefined,
-    !showAll
-  );
+  const showFavorites = showParam === "favorites";
+  const beforeKey = beforeSortKey ? Number(beforeSortKey) : undefined;
+  const entries = showFavorites
+    ? listStarredEntries(PAGE_SIZE, beforeKey)
+    : listEntries(PAGE_SIZE, beforeKey, Number.isFinite(selectedFeedId) ? selectedFeedId : undefined, !showAll);
   return new Response(JSON.stringify(entries), {
     headers: {
       "Content-Type": "application/json",
@@ -204,10 +214,13 @@ function renderHomePage(url: URL) {
   const showParam = url.searchParams.get("show");
   const selectedFeedId = feedParam ? Number(feedParam) : undefined;
   const showAll = showParam === "all";
-  const entries = listEntries(PAGE_SIZE, undefined, Number.isFinite(selectedFeedId) ? selectedFeedId : undefined, !showAll);
+  const showFavorites = showParam === "favorites";
+  const entries = showFavorites
+    ? listStarredEntries(PAGE_SIZE)
+    : listEntries(PAGE_SIZE, undefined, Number.isFinite(selectedFeedId) ? selectedFeedId : undefined, !showAll);
   const feeds = listFeeds();
   const flash = url.searchParams.get("flash");
-  const html = renderHome({ entries, feeds, flash, selectedFeedId: Number.isFinite(selectedFeedId) ? selectedFeedId! : undefined, showAll });
+  const html = renderHome({ entries, feeds, flash, selectedFeedId: Number.isFinite(selectedFeedId) ? selectedFeedId! : undefined, showAll, showFavorites });
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",

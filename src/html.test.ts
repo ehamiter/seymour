@@ -30,6 +30,7 @@ describe("renderHome", () => {
     published_at: "2024-01-01T12:00:00.000Z",
     fetched_at: "2024-01-01T12:00:00.000Z",
     read_at: null,
+    starred_at: null,
     sort_key: Date.parse("2024-01-01T12:00:00.000Z"),
     unread: 1,
     raw: {},

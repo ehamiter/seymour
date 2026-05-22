@@ -9,18 +9,20 @@ export function renderHome(params: {
   flash?: string | null;
   selectedFeedId?: number;
   showAll?: boolean;
+  showFavorites?: boolean;
 }) {
-  const { entries, feeds, flash, selectedFeedId, showAll = false } = params;
+  const { entries, feeds, flash, selectedFeedId, showAll = false, showFavorites = false } = params;
   const body = renderEntries(entries, showAll);
   const feedList = renderFeedList(feeds, selectedFeedId);
   const flashBox = flash ? `<div class="flash">${escapeHtml(flash)}</div>` : "";
   const selectedFeed =
     typeof selectedFeedId === "number" ? feeds.find((f) => f.id === selectedFeedId) ?? null : null;
   const viewLabel = showAll ? "All" : "Unread";
-  const heading =
-    selectedFeed && selectedFeedId
-      ? `${viewLabel} — ${formatText(selectedFeed.title ?? selectedFeed.url)}`
-      : viewLabel;
+  const heading = showFavorites
+    ? "Favorites"
+    : selectedFeed && selectedFeedId
+    ? `${viewLabel} — ${formatText(selectedFeed.title ?? selectedFeed.url)}`
+    : viewLabel;
 
   return `
 <!doctype html>
@@ -517,6 +519,9 @@ export function renderHome(params: {
         margin: 0;
         font-size: 1.05rem;
         letter-spacing: 0.01em;
+        display: flex;
+        align-items: baseline;
+        gap: 0.4rem;
       }
 
       .entry h3 a {
@@ -526,6 +531,25 @@ export function renderHome(params: {
 
       .entry h3 a:hover {
         text-decoration: underline;
+      }
+
+      .star-badge {
+        font-size: 0.9rem;
+        cursor: pointer;
+        color: var(--border);
+        transition: color 120ms ease;
+        flex-shrink: 0;
+        line-height: 1.4;
+        user-select: none;
+      }
+
+      .star-badge.starred {
+        color: #f59e0b;
+      }
+
+      .entry.current .star-badge:not(.starred),
+      .star-badge:hover {
+        color: var(--muted);
       }
 
       .entry p {
@@ -1071,6 +1095,14 @@ export function renderHome(params: {
             <span>Open current link in a new tab</span>
           </li>
           <li class="shortcut-row">
+            <span class="shortcut-keys"><kbd>s</kbd></span>
+            <span>Save current entry to favorites</span>
+          </li>
+          <li class="shortcut-row">
+            <span class="shortcut-keys"><kbd>f</kbd></span>
+            <span>Go to favorites</span>
+          </li>
+          <li class="shortcut-row">
             <span class="shortcut-keys"><kbd>m</kbd></span>
             <span>Mark current read</span>
           </li>
@@ -1105,7 +1137,14 @@ export function renderHome(params: {
     <div class="layout">
       <section class="feeds" aria-label="Feeds">
         <div class="stack">
-          <div class="feed-row ${!selectedFeedId ? "active" : ""}">
+          <div class="feed-row ${showFavorites ? "active" : ""}">
+            <a class="feed-main" href="/?show=favorites">
+              <div class="stack">
+                <strong>★ Favorites</strong>
+              </div>
+            </a>
+          </div>
+          <div class="feed-row ${!selectedFeedId && !showFavorites ? "active" : ""}">
             <a class="feed-main" href="/">
               <div class="stack">
                 <strong>All feeds</strong>
@@ -1130,13 +1169,13 @@ export function renderHome(params: {
       <section class="entries" aria-label="Entries">
         <div class="entries-header">
           <h2>${heading}</h2>
-          <div class="view-toggle">
+          ${!showFavorites ? `<div class="view-toggle">
             <a href="/?${selectedFeedId ? `feed=${selectedFeedId}&` : ""}show=unread" class="${!showAll ? "active" : ""}" data-view="unread">Unread</a>
             <span class="muted">|</span>
             <a href="/?${selectedFeedId ? `feed=${selectedFeedId}&` : ""}show=all" class="${showAll ? "active" : ""}" data-view="all">All</a>
-          </div>
+          </div>` : ""}
         </div>
-        ${entries.length === 0 ? `<p class="muted" style="grid-column:1 / -1; padding:0.5rem 0 1rem;">${showAll ? "No entries yet." : "Inbox zero. Enjoy the silence."}</p>` : ""}
+        ${entries.length === 0 ? `<p class="muted" style="grid-column:1 / -1; padding:0.5rem 0 1rem;">${showFavorites ? "No favorites yet. Press <kbd>s</kbd> on any entry to save it." : showAll ? "No entries yet." : "Inbox zero. Enjoy the silence."}</p>` : ""}
         ${body}
       </section>
     </div>
@@ -1299,6 +1338,38 @@ export function renderHome(params: {
           }
         };
 
+        const toggleStar = (entry) => {
+          if (!entry) return;
+          const id = entry.dataset.entryId;
+          const isStarred = entry.dataset.starred === "1";
+          const newStarred = !isStarred;
+          entry.dataset.starred = newStarred ? "1" : "0";
+          const starBadge = entry.querySelector(".star-badge");
+          if (starBadge) {
+            starBadge.classList.toggle("starred", newStarred);
+            starBadge.setAttribute("aria-label", newStarred ? "Starred" : "Not starred");
+          }
+          fetch(\`/entries/\${id}/star\`, {
+            method: "POST",
+            headers: { "Accept": "application/json" },
+            keepalive: true,
+          }).then(async (res) => {
+            if (!res.ok) throw new Error("failed");
+            const data = await res.json();
+            entry.dataset.starred = data.starred ? "1" : "0";
+            if (starBadge) {
+              starBadge.classList.toggle("starred", data.starred);
+              starBadge.setAttribute("aria-label", data.starred ? "Starred" : "Not starred");
+            }
+          }).catch(() => {
+            entry.dataset.starred = isStarred ? "1" : "0";
+            if (starBadge) {
+              starBadge.classList.toggle("starred", isStarred);
+              starBadge.setAttribute("aria-label", isStarred ? "Starred" : "Not starred");
+            }
+          });
+        };
+
         const markRead = (entry, silent) => {
           if (!entry || entry.dataset.read === "1") return;
           entry.dataset.read = "1";
@@ -1426,11 +1497,20 @@ export function renderHome(params: {
             if (!target) return;
             const tagName = target.tagName;
             if (tagName === "A" || tagName === "BUTTON") return;
-            if (target.closest && target.closest("a, button")) return;
+            if (target.closest && target.closest("a, button, .star-badge")) return;
             setCurrent(idx);
             // Mark as read on click to handle the last entry (which can't be scrolled past)
             markRead(el, false);
           });
+
+          const starBadge = el.querySelector(".star-badge");
+          if (starBadge) {
+            starBadge.addEventListener("click", (event) => {
+              event.stopPropagation();
+              setCurrent(idx);
+              toggleStar(el);
+            });
+          }
         });
 
         // Infinite scroll: load more entries when user approaches the end
@@ -1444,13 +1524,15 @@ export function renderHome(params: {
           
           const url = new URL(window.location.href);
           const feedId = url.searchParams.get("feed");
-          const showAll = url.searchParams.get("show") === "all";
+          const showParam = url.searchParams.get("show");
+          const showAll = showParam === "all";
+          const showFavorites = showParam === "favorites";
           const beforeSortKey = lastEntry.dataset.sortKey;
-          
+
           const queryParams = new URLSearchParams({
             before: beforeSortKey,
             ...(feedId ? { feed: feedId } : {}),
-            ...(showAll ? { show: "all" } : {}),
+            ...(showFavorites ? { show: "favorites" } : showAll ? { show: "all" } : {}),
           });
           
           try {
@@ -1481,7 +1563,8 @@ export function renderHome(params: {
               article.dataset.feedId = entry.feed_id;
               article.dataset.sortKey = entry.sort_key;
               article.dataset.read = entry.unread ? "0" : "1";
-              
+              article.dataset.starred = entry.starred_at ? "1" : "0";
+
               const date = entry.published_at || entry.fetched_at;
               const dateStr = new Date(date).toLocaleDateString("default", {
                 month: "short",
@@ -1489,21 +1572,23 @@ export function renderHome(params: {
                 hour: "2-digit",
                 minute: "2-digit",
               });
-              
+
               const summaryPreview = entry.summary
                 ? entry.summary.replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ").trim().slice(0, 320)
                 : "";
-              
+
               const title = entry.title ? entry.title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;") : "(untitled)";
               const feedTitle = entry.feed_title ? entry.feed_title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : entry.feed_url;
-              
+
               const rawSummary = entry.summary ? encodeURIComponent(entry.summary) : "";
+              const starClass = entry.starred_at ? " starred" : "";
+              const starLabel = entry.starred_at ? "Starred" : "Not starred";
               article.innerHTML = \`
                 <header>
                   <span class="feed">\${feedTitle}</span>
                   <time datetime="\${date}">\${dateStr}</time>
                 </header>
-                <h3><a href="\${entry.url || entry.feed_url}" target="_blank" rel="noreferrer">\${title}</a></h3>
+                <h3><span class="star-badge\${starClass}" aria-label="\${starLabel}">★</span><a href="\${entry.url || entry.feed_url}" target="_blank" rel="noreferrer">\${title}</a></h3>
                 \${summaryPreview ? \`<div class="summary" data-raw="\${rawSummary}">\${summaryPreview}</div>\` : ""}
               \`;
               
@@ -1515,11 +1600,20 @@ export function renderHome(params: {
                 if (!target) return;
                 const tagName = target.tagName;
                 if (tagName === "A" || tagName === "BUTTON") return;
-                if (target.closest && target.closest("a, button")) return;
+                if (target.closest && target.closest("a, button, .star-badge")) return;
                 const idx = entries.length;
                 setCurrent(idx);
                 markRead(article, false);
               });
+
+              const newStarBadge = article.querySelector(".star-badge");
+              if (newStarBadge) {
+                newStarBadge.addEventListener("click", (event) => {
+                  event.stopPropagation();
+                  setCurrent(entries.length);
+                  toggleStar(article);
+                });
+              }
               
               // Observe new entry for auto-read
               io.observe(article);
@@ -1624,6 +1718,12 @@ export function renderHome(params: {
           } else if (event.key === "z") {
             event.preventDefault();
             if (typeof window.__toggleZen === "function") window.__toggleZen();
+          } else if (event.key === "s") {
+            event.preventDefault();
+            toggleStar(entries[pointer]);
+          } else if (event.key === "f") {
+            event.preventDefault();
+            window.location.href = "/?show=favorites";
           }
         });
 
@@ -2065,12 +2165,12 @@ function renderEntries(entries: EntryView[], showAll: boolean) {
         : "";
 
           return `
-      <article class="entry" tabindex="-1" data-entry-id="${entry.id}" data-feed-id="${entry.feed_id}" data-sort-key="${entry.sort_key}" data-read="${entry.unread ? "0" : "1"}">
+      <article class="entry" tabindex="-1" data-entry-id="${entry.id}" data-feed-id="${entry.feed_id}" data-sort-key="${entry.sort_key}" data-read="${entry.unread ? "0" : "1"}" data-starred="${entry.starred_at ? "1" : "0"}">
         <header>
           <span class="feed">${escapeHtml(entry.feed_title ?? entry.feed_url)}</span>
           <time datetime="${escapeHtml(date ?? "")}">${displayDate}</time>
         </header>
-        <h3><a href="${escapeAttr(entry.url ?? entry.feed_url)}" target="_blank" rel="noreferrer">${title}</a></h3>
+        <h3><span class="star-badge${entry.starred_at ? " starred" : ""}" aria-label="${entry.starred_at ? "Starred" : "Not starred"}">★</span><a href="${escapeAttr(entry.url ?? entry.feed_url)}" target="_blank" rel="noreferrer">${title}</a></h3>
         ${summary ? `<div class="summary" data-raw="${escapeAttr(rawSummary)}">${summaryPreview}</div>` : ""}
       </article>
     `;
