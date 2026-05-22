@@ -21,6 +21,7 @@ Seymour is a lightweight, single-binary RSS/Atom reader built on Bun and SQLite.
 - Optional Basic Auth via `APP_PASSWORD` for shared deployments.
 - **Modern theming system** with 12 predefined color schemes from the [12-bit rainbow palette](https://iamkate.com/data/12-bit-rainbow/) (Red, Pink, Coral, Orange, Yellow, Lime, Green, Teal, Cyan, Azure, Blue, Purple) plus custom color support using OKLCH color space for perceptually uniform colors across light and dark modes.
 - **Infinite scroll** – automatically loads more articles as you navigate, so you can seamlessly work through hundreds or thousands of feeds.
+- **Zen mode** – hides all unread counts so reading feels like a calm river rather than an inbox to drain. Toggle in Settings or press `z`.
 
 ## Default Shortcuts
 | Key | Action |
@@ -33,6 +34,7 @@ Seymour is a lightweight, single-binary RSS/Atom reader built on Bun and SQLite.
 | `u` | Toggle unread/all view |
 | `r` | Refresh all feeds |
 | `a` | View all feeds |
+| `z` | Toggle zen mode |
 | `?` | Toggle the shortcuts overlay |
 
 ## Requirements

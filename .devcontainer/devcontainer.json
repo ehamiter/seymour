@@ -1,12 +1,10 @@
 {
-  "name": "Devcontainer Sandbox",
+  "name": "seymour",
   "build": {
     "dockerfile": "Dockerfile"
   },
   "features": {
-    "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers/features/node:1": { "version": "lts" },
-    "ghcr.io/devcontainers/features/common-utils:2": {
+    "ghcr.io/devcontainers/features/common-utils": {
       "installZsh": true,
       "upgradePackages": true
     }
@@ -17,15 +15,15 @@
   ],
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
   "workspaceFolder": "/workspace",
-  "initializeCommand": "mkdir -p /tmp/clipbridge",
+  "initializeCommand": "mkdir -p /tmp/clipbridge $HOME/.claude $HOME/.config/gh",
   "mounts": [
-    "source=${localWorkspaceFolder}/.devcontainer/.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly",
-    "source=${localEnv:HOME}/tmp/clipbridge,target=/clipboard,type=bind,readonly"
+    "source=/tmp/clipbridge,target=/clipboard,type=bind,readonly",
+    "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind"
   ],
   "remoteEnv": {
     "PATH": "/home/vscode/.local/bin:${containerEnv:PATH}"
   },
   "remoteUser": "vscode",
-  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh && /usr/local/bin/install-ai-tools.sh && cd /workspace",
+  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh && /usr/local/bin/install-ai-tools.sh",
   "waitFor": "postStartCommand"
 }

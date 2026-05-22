@@ -278,6 +278,13 @@ export function renderHome(params: {
         font-size: 0.85rem;
         min-width: 2.5rem;
         text-align: center;
+        transition: opacity 0.35s ease, transform 0.35s ease;
+      }
+
+      :root.zen-mode .unread-pill {
+        opacity: 0;
+        pointer-events: none;
+        transform: scale(0.7);
       }
 
       .feed-error {
@@ -846,6 +853,49 @@ export function renderHome(params: {
         color: var(--muted);
       }
 
+      .zen-label {
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.95rem;
+        user-select: none;
+      }
+
+      .zen-toggle-track {
+        flex-shrink: 0;
+        position: relative;
+        width: 38px;
+        height: 22px;
+        background: var(--border);
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        transition: background 0.25s ease, border-color 0.25s ease;
+        margin-top: 2px;
+      }
+
+      .zen-label:has(input:checked) .zen-toggle-track {
+        background: var(--accent);
+        border-color: var(--accent-strong);
+      }
+
+      .zen-toggle-thumb {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        transition: transform 0.25s ease;
+      }
+
+      .zen-label:has(input:checked) .zen-toggle-thumb {
+        transform: translateX(16px);
+      }
+
       @media (max-width: 980px) {
         body {
           height: auto;
@@ -962,6 +1012,19 @@ export function renderHome(params: {
               <p class="muted" style="margin: 0; font-size: 0.85rem;">Pick a color to generate a custom theme.</p>
             </div>
           </div>
+          <div class="stack">
+            <span><strong>Reading</strong></span>
+            <label class="zen-label">
+              <span class="zen-toggle-track" id="zen-toggle-track">
+                <span class="zen-toggle-thumb"></span>
+              </span>
+              <input type="checkbox" id="zen-mode-toggle" style="position:absolute;opacity:0;width:0;height:0;" />
+              <span>
+                Zen mode
+                <span class="muted" style="display:block;font-size:0.85rem;font-weight:400;">Hide unread counts for a more tranquil reading experience.</span>
+              </span>
+            </label>
+          </div>
           <form class="stack" method="post" action="/feeds" enctype="multipart/form-data">
             <div class="stack">
               <label class="stack">
@@ -1026,6 +1089,10 @@ export function renderHome(params: {
           <li class="shortcut-row">
             <span class="shortcut-keys"><kbd>a</kbd></span>
             <span>View all feeds</span>
+          </li>
+          <li class="shortcut-row">
+            <span class="shortcut-keys"><kbd>z</kbd></span>
+            <span>Toggle zen mode</span>
           </li>
           <li class="shortcut-row">
             <span class="shortcut-keys"><kbd>?</kbd></span>
@@ -1554,6 +1621,9 @@ export function renderHome(params: {
             if (link instanceof HTMLAnchorElement && link.href) {
               window.open(link.href, "_blank", "noopener");
             }
+          } else if (event.key === "z") {
+            event.preventDefault();
+            if (typeof window.__toggleZen === "function") window.__toggleZen();
           }
         });
 
@@ -1705,6 +1775,34 @@ export function renderHome(params: {
               } catch (e) {
                 // Ignore localStorage errors
               }
+            });
+          }
+        })();
+
+        // Zen mode: hide unread counts for a more tranquil reading experience.
+        (() => {
+          const zenToggle = document.getElementById("zen-mode-toggle");
+
+          const applyZen = (enabled) => {
+            document.documentElement.classList.toggle("zen-mode", enabled);
+            if (zenToggle instanceof HTMLInputElement) zenToggle.checked = enabled;
+          };
+
+          window.__toggleZen = () => {
+            const next = !document.documentElement.classList.contains("zen-mode");
+            applyZen(next);
+            try { localStorage.setItem("seymour-zen", next ? "1" : "0"); } catch {}
+          };
+
+          try {
+            if (localStorage.getItem("seymour-zen") === "1") applyZen(true);
+          } catch {}
+
+          if (zenToggle instanceof HTMLInputElement) {
+            zenToggle.addEventListener("change", () => {
+              const enabled = zenToggle.checked;
+              applyZen(enabled);
+              try { localStorage.setItem("seymour-zen", enabled ? "1" : "0"); } catch {}
             });
           }
         })();

@@ -18,10 +18,10 @@ install_if_missing() {
 install_if_missing "claude" "claude" \
     "curl -fsSL https://claude.ai/install.sh | bash"
 
-install_if_missing "copilot" "gh copilot" \
-    "curl -fsSL https://gh.io/copilot-install | bash"
-
-install_if_missing "opencode" "opencode" \
-    "curl -fsSL https://opencode.ai/install | bash"
+echo "[evanflow] installing skills..."
+claude plugin marketplace add evanklem/evanflow 2>/dev/null || \
+  claude plugin marketplace update evanflow
+claude plugin install evanflow@evanflow 2>/dev/null || true
+echo "[evanflow] done"
 
 echo "AI tools ready"
