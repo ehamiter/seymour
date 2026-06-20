@@ -13,3 +13,4 @@ dist/
 logs/
 node_modules/
 data/
+.devcontainer/
