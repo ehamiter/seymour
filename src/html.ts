@@ -1042,7 +1042,6 @@ export function renderHome(params: {
         </div>
       </div>
       <div class="header-actions">
-        <button type="button" data-open-settings aria-label="Open settings">Settings</button>
         <label class="mode-toggle" title="Toggle light/dark mode">
           <span class="mode-toggle-icon" aria-hidden="true">☀</span>
           <span class="mode-toggle-track">
@@ -1051,6 +1050,7 @@ export function renderHome(params: {
           <span class="mode-toggle-icon" aria-hidden="true">☾</span>
           <input type="checkbox" id="mode-toggle-input" aria-label="Dark mode" />
         </label>
+        <button type="button" data-open-settings aria-label="Open settings">Settings</button>
       </div>
     </header>
     <div class="settings-overlay" data-settings-overlay hidden>
