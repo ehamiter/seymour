@@ -703,6 +703,20 @@ export function renderHome(params: {
         margin: 0.75rem 0;
         border-radius: 8px;
         border: 1px solid var(--border);
+        transition: filter 0.2s ease;
+      }
+
+      /* Dim feed images in dark mode so bright images aren't jarring. */
+      /* Manual dark mode: the toggle sets color-scheme inline on <html>. */
+      html[style*="color-scheme: dark"] .summary img {
+        filter: brightness(50%);
+      }
+
+      /* OS dark mode (auto), unless a manual light override is set inline. */
+      @media (prefers-color-scheme: dark) {
+        html:not([style*="color-scheme: light"]) .summary img {
+          filter: brightness(50%);
+        }
       }
 
       .entry .actions {
