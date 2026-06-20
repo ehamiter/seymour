@@ -176,7 +176,7 @@ describe("keyboard shortcuts", () => {
     }
   });
 
-  it("toggles dark mode with the 'd' key", () => {
+  it("toggles dark mode with the 'd' key and persists the choice", () => {
     const html = renderHome({ entries, feeds: [feed] });
     const ctx = mountHtmlDocument(html);
     try {
@@ -185,10 +185,12 @@ describe("keyboard shortcuts", () => {
       ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "d" }));
       const after = root.style.colorScheme;
       expect(after === "dark" || after === "light").toBe(true);
+      expect(ctx.window.localStorage.getItem("seymour-mode")).toBe(after);
 
-      // Toggling again flips to the opposite mode.
+      // Toggling again flips to the opposite mode and updates storage.
       ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "d" }));
       expect(root.style.colorScheme).not.toBe(after);
+      expect(ctx.window.localStorage.getItem("seymour-mode")).toBe(root.style.colorScheme);
     } finally {
       ctx.restore();
     }
