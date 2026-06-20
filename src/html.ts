@@ -1215,6 +1215,10 @@ export function renderHome(params: {
             <span>Toggle zen mode</span>
           </li>
           <li class="shortcut-row">
+            <span class="shortcut-keys"><kbd>d</kbd></span>
+            <span>Toggle dark mode</span>
+          </li>
+          <li class="shortcut-row">
             <span class="shortcut-keys"><kbd>?</kbd></span>
             <span>Toggle this shortcuts guide</span>
           </li>
@@ -1806,6 +1810,9 @@ export function renderHome(params: {
           } else if (event.key === "z") {
             event.preventDefault();
             if (typeof window.__toggleZen === "function") window.__toggleZen();
+          } else if (event.key === "d") {
+            event.preventDefault();
+            if (typeof window.__toggleMode === "function") window.__toggleMode();
           } else if (event.key === "s") {
             event.preventDefault();
             toggleStar(entries[pointer]);
@@ -2010,6 +2017,12 @@ export function renderHome(params: {
           prefersDark.addEventListener("change", () => {
             if (!getSavedMode()) syncThumb();
           });
+
+          // Allow toggling via keyboard shortcut by flipping the slider.
+          window.__toggleMode = () => {
+            input.checked = !input.checked;
+            input.dispatchEvent(new Event("change"));
+          };
         })();
 
         // Zen mode: hide unread counts for a more tranquil reading experience.

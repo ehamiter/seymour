@@ -25,6 +25,7 @@ export function mountHtmlDocument(html: string, options: DomOptions = {}) {
     IntersectionObserver: (globalThis as any).IntersectionObserver,
     fetch: globalThis.fetch,
     open: (globalThis as any).open,
+    localStorage: (globalThis as any).localStorage,
   };
 
   const intersectionObserver =
@@ -62,6 +63,9 @@ export function mountHtmlDocument(html: string, options: DomOptions = {}) {
   (window as any).fetch = fetchMock as any;
   (window as any).open = openMock as any;
   (globalThis as any).open = openMock as any;
+  // Share one storage between the page scripts (which reference the global
+  // `localStorage`) and tests (which read `window.localStorage`).
+  (globalThis as any).localStorage = window.localStorage as any;
 
   window.document.write(html);
   window.document.close();
@@ -93,6 +97,7 @@ export function mountHtmlDocument(html: string, options: DomOptions = {}) {
     (globalThis as any).IntersectionObserver = previous.IntersectionObserver;
     (globalThis as any).fetch = previous.fetch;
     (globalThis as any).open = previous.open;
+    (globalThis as any).localStorage = previous.localStorage;
   };
 
   return { window, document: window.document, restore, fetchMock, openMock };
