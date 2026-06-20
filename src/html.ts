@@ -183,7 +183,10 @@ export function renderHome(params: {
         padding: 0.55rem 1.5rem;
         position: sticky;
         top: 0;
-        background: rgba(247, 247, 251, 0.98);
+        background: light-dark(
+          rgba(247, 247, 251, 0.98),
+          oklch(0.18 0.025 var(--base-hue) / 0.98)
+        );
         backdrop-filter: blur(6px);
         border-bottom: 1px solid var(--border);
         z-index: 20;
@@ -290,7 +293,7 @@ export function renderHome(params: {
       }
 
       .feed-error {
-        color: #b42318;
+        color: light-dark(#b42318, #f87171);
         font-size: 0.85rem;
       }
 
@@ -319,11 +322,11 @@ export function renderHome(params: {
       }
 
       .feed-row:hover .feed-main {
-        background: #f6f8fd;
+        background: light-dark(#f6f8fd, oklch(0.26 0.03 var(--base-hue)));
       }
 
       .feed-row.active .feed-main {
-        background: #eef3ff;
+        background: light-dark(#eef3ff, oklch(0.30 0.05 var(--base-hue)));
         border-color: var(--accent);
       }
 
@@ -339,7 +342,7 @@ export function renderHome(params: {
         padding: 0.15rem 0.5rem;
         border-radius: 8px;
         border: 1px solid var(--border);
-        background: #fff;
+        background: var(--panel);
       }
 
       .feed-menu summary::-webkit-details-marker {
@@ -356,7 +359,7 @@ export function renderHome(params: {
         right: 0;
         top: 120%;
         width: min(280px, 80vw);
-        background: #fff;
+        background: var(--panel);
         border: 1px solid var(--border);
         border-radius: 10px;
         box-shadow: var(--shadow);
@@ -401,7 +404,7 @@ export function renderHome(params: {
         padding: 0.4rem 0.75rem;
         border-radius: 8px;
         cursor: pointer;
-        background: #fff;
+        background: var(--panel);
         font-weight: 600;
         color: var(--ink);
       }
@@ -466,7 +469,7 @@ export function renderHome(params: {
         display: grid;
         grid-template-columns: subgrid;
         align-content: start;
-        background: linear-gradient(145deg, #ffffff 60%, rgba(35, 79, 158, 0.04));
+        background: linear-gradient(145deg, var(--panel) 60%, color-mix(in srgb, var(--accent) 5%, var(--panel)));
         border: 1px solid var(--border);
         border-radius: 12px;
         padding: 0.85rem 1rem;
@@ -603,7 +606,7 @@ export function renderHome(params: {
       }
 
       .summary pre {
-        background: #f4f6fb;
+        background: light-dark(#f4f6fb, oklch(0.24 0.03 var(--base-hue)));
         border: 1px solid var(--border);
         border-radius: 8px;
         margin: 0.75rem 0;
@@ -614,7 +617,7 @@ export function renderHome(params: {
       }
 
       .summary code {
-        background: #f4f6fb;
+        background: light-dark(#f4f6fb, oklch(0.24 0.03 var(--base-hue)));
         border: 1px solid var(--border);
         border-radius: 4px;
         padding: 0.15rem 0.35rem;
@@ -646,7 +649,7 @@ export function renderHome(params: {
 
       button {
         border: 1px solid var(--border);
-        background: #fff;
+        background: var(--panel);
         color: var(--ink);
         border-radius: 8px;
         padding: 0.4rem 0.75rem;
@@ -714,7 +717,7 @@ export function renderHome(params: {
 
       .settings-panel {
         width: min(640px, 92vw);
-        background: #fff;
+        background: var(--panel);
         border: 1px solid var(--border);
         border-radius: 12px;
         box-shadow: var(--shadow);
@@ -809,7 +812,7 @@ export function renderHome(params: {
       }
 
       kbd {
-        background: #f1f4fb;
+        background: light-dark(#f1f4fb, oklch(0.26 0.03 var(--base-hue)));
         border: 1px solid var(--border);
         border-radius: 6px;
         padding: 0.15rem 0.45rem;
@@ -835,7 +838,7 @@ export function renderHome(params: {
 
       .shortcut-panel {
         width: min(520px, 90vw);
-        background: #fff;
+        background: var(--panel);
         border: 1px solid var(--border);
         border-radius: 12px;
         box-shadow: var(--shadow);
