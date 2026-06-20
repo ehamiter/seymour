@@ -66,10 +66,11 @@ export function mountHtmlDocument(html: string, options: DomOptions = {}) {
   window.document.write(html);
   window.document.close();
 
-  const scriptEl = window.document.querySelector("script");
-  if (scriptEl?.textContent) {
-    const run = new Function(scriptEl.textContent);
-    run();
+  for (const scriptEl of window.document.querySelectorAll("script")) {
+    if (scriptEl.textContent) {
+      const run = new Function(scriptEl.textContent);
+      run();
+    }
   }
 
   // Ensure any DOMContentLoaded listeners run.

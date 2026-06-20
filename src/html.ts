@@ -183,10 +183,77 @@ export function renderHome(params: {
         padding: 0.55rem 1.5rem;
         position: sticky;
         top: 0;
-        background: rgba(247, 247, 251, 0.98);
+        background: light-dark(
+          rgba(247, 247, 251, 0.98),
+          oklch(0.18 0.025 var(--base-hue) / 0.98)
+        );
         backdrop-filter: blur(6px);
         border-bottom: 1px solid var(--border);
         z-index: 20;
+      }
+
+      .header-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.5rem;
+        flex-shrink: 0;
+      }
+
+      .mode-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .mode-toggle input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .mode-toggle-icon {
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1;
+      }
+
+      .mode-toggle-track {
+        position: relative;
+        width: 38px;
+        height: 22px;
+        background: var(--border);
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        transition: background 0.25s ease, border-color 0.25s ease;
+      }
+
+      .mode-toggle:has(input:checked) .mode-toggle-track {
+        background: var(--accent);
+        border-color: var(--accent-strong);
+      }
+
+      .mode-toggle-thumb {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        transition: transform 0.25s ease;
+      }
+
+      .mode-toggle:has(input:checked) .mode-toggle-thumb {
+        transform: translateX(16px);
+      }
+
+      .mode-toggle:focus-within .mode-toggle-track {
+        box-shadow: 0 0 0 2px var(--accent);
       }
 
       .brand {
@@ -290,7 +357,7 @@ export function renderHome(params: {
       }
 
       .feed-error {
-        color: #b42318;
+        color: light-dark(#b42318, #f87171);
         font-size: 0.85rem;
       }
 
@@ -319,11 +386,11 @@ export function renderHome(params: {
       }
 
       .feed-row:hover .feed-main {
-        background: #f6f8fd;
+        background: light-dark(#f6f8fd, oklch(0.26 0.03 var(--base-hue)));
       }
 
       .feed-row.active .feed-main {
-        background: #eef3ff;
+        background: light-dark(#eef3ff, oklch(0.30 0.05 var(--base-hue)));
         border-color: var(--accent);
       }
 
@@ -339,7 +406,7 @@ export function renderHome(params: {
         padding: 0.15rem 0.5rem;
         border-radius: 8px;
         border: 1px solid var(--border);
-        background: #fff;
+        background: var(--panel);
       }
 
       .feed-menu summary::-webkit-details-marker {
@@ -356,7 +423,7 @@ export function renderHome(params: {
         right: 0;
         top: 120%;
         width: min(280px, 80vw);
-        background: #fff;
+        background: var(--panel);
         border: 1px solid var(--border);
         border-radius: 10px;
         box-shadow: var(--shadow);
@@ -401,7 +468,7 @@ export function renderHome(params: {
         padding: 0.4rem 0.75rem;
         border-radius: 8px;
         cursor: pointer;
-        background: #fff;
+        background: var(--panel);
         font-weight: 600;
         color: var(--ink);
       }
@@ -466,7 +533,7 @@ export function renderHome(params: {
         display: grid;
         grid-template-columns: subgrid;
         align-content: start;
-        background: linear-gradient(145deg, #ffffff 60%, rgba(35, 79, 158, 0.04));
+        background: linear-gradient(145deg, var(--panel) 60%, color-mix(in srgb, var(--accent) 5%, var(--panel)));
         border: 1px solid var(--border);
         border-radius: 12px;
         padding: 0.85rem 1rem;
@@ -603,7 +670,7 @@ export function renderHome(params: {
       }
 
       .summary pre {
-        background: #f4f6fb;
+        background: light-dark(#f4f6fb, oklch(0.24 0.03 var(--base-hue)));
         border: 1px solid var(--border);
         border-radius: 8px;
         margin: 0.75rem 0;
@@ -614,7 +681,7 @@ export function renderHome(params: {
       }
 
       .summary code {
-        background: #f4f6fb;
+        background: light-dark(#f4f6fb, oklch(0.24 0.03 var(--base-hue)));
         border: 1px solid var(--border);
         border-radius: 4px;
         padding: 0.15rem 0.35rem;
@@ -646,7 +713,7 @@ export function renderHome(params: {
 
       button {
         border: 1px solid var(--border);
-        background: #fff;
+        background: var(--panel);
         color: var(--ink);
         border-radius: 8px;
         padding: 0.4rem 0.75rem;
@@ -714,7 +781,7 @@ export function renderHome(params: {
 
       .settings-panel {
         width: min(640px, 92vw);
-        background: #fff;
+        background: var(--panel);
         border: 1px solid var(--border);
         border-radius: 12px;
         box-shadow: var(--shadow);
@@ -809,7 +876,7 @@ export function renderHome(params: {
       }
 
       kbd {
-        background: #f1f4fb;
+        background: light-dark(#f1f4fb, oklch(0.26 0.03 var(--base-hue)));
         border: 1px solid var(--border);
         border-radius: 6px;
         padding: 0.15rem 0.45rem;
@@ -835,7 +902,7 @@ export function renderHome(params: {
 
       .shortcut-panel {
         width: min(520px, 90vw);
-        background: #fff;
+        background: var(--panel);
         border: 1px solid var(--border);
         border-radius: 12px;
         box-shadow: var(--shadow);
@@ -953,6 +1020,17 @@ export function renderHome(params: {
         }
       }
     </style>
+    <script>
+      // Apply saved light/dark override before first paint to avoid a flash.
+      (function () {
+        try {
+          var mode = localStorage.getItem("seymour-mode");
+          if (mode === "light" || mode === "dark") {
+            document.documentElement.style.colorScheme = mode;
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <header>
@@ -963,7 +1041,17 @@ export function renderHome(params: {
           <p class="muted">Press <kbd>?</kbd> to see keyboard shortcuts.</p>
         </div>
       </div>
-      <button type="button" data-open-settings aria-label="Open settings">Settings</button>
+      <div class="header-actions">
+        <button type="button" data-open-settings aria-label="Open settings">Settings</button>
+        <label class="mode-toggle" title="Toggle light/dark mode">
+          <span class="mode-toggle-icon" aria-hidden="true">☀</span>
+          <span class="mode-toggle-track">
+            <span class="mode-toggle-thumb"></span>
+          </span>
+          <span class="mode-toggle-icon" aria-hidden="true">☾</span>
+          <input type="checkbox" id="mode-toggle-input" aria-label="Dark mode" />
+        </label>
+      </div>
     </header>
     <div class="settings-overlay" data-settings-overlay hidden>
       <div class="settings-panel" role="dialog" aria-modal="true" aria-label="Settings" tabindex="-1">
@@ -1877,6 +1965,51 @@ export function renderHome(params: {
               }
             });
           }
+        })();
+
+        // Light/dark mode toggle: overrides the OS preference when set,
+        // otherwise follows it (auto).
+        (() => {
+          const input = document.getElementById("mode-toggle-input");
+          if (!(input instanceof HTMLInputElement)) return;
+
+          const root = document.documentElement;
+          const prefersDark =
+            typeof window.matchMedia === "function"
+              ? window.matchMedia("(prefers-color-scheme: dark)")
+              : { matches: false, addEventListener() {} };
+
+          const getSavedMode = () => {
+            try {
+              const mode = localStorage.getItem("seymour-mode");
+              return mode === "light" || mode === "dark" ? mode : null;
+            } catch (e) {
+              return null;
+            }
+          };
+
+          const syncThumb = () => {
+            const saved = getSavedMode();
+            input.checked = saved ? saved === "dark" : prefersDark.matches;
+          };
+
+          // Reflect the current effective mode in the slider position.
+          syncThumb();
+
+          input.addEventListener("change", () => {
+            const mode = input.checked ? "dark" : "light";
+            root.style.colorScheme = mode;
+            try {
+              localStorage.setItem("seymour-mode", mode);
+            } catch (e) {
+              // Ignore localStorage errors
+            }
+          });
+
+          // While in auto mode, keep the slider in step with the OS.
+          prefersDark.addEventListener("change", () => {
+            if (!getSavedMode()) syncThumb();
+          });
         })();
 
         // Zen mode: hide unread counts for a more tranquil reading experience.
