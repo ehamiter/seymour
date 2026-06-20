@@ -176,6 +176,24 @@ describe("keyboard shortcuts", () => {
     }
   });
 
+  it("toggles dark mode with the 'd' key", () => {
+    const html = renderHome({ entries, feeds: [feed] });
+    const ctx = mountHtmlDocument(html);
+    try {
+      const root = ctx.document.documentElement;
+
+      ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "d" }));
+      const after = root.style.colorScheme;
+      expect(after === "dark" || after === "light").toBe(true);
+
+      // Toggling again flips to the opposite mode.
+      ctx.window.dispatchEvent(new ctx.window.KeyboardEvent("keydown", { key: "d" }));
+      expect(root.style.colorScheme).not.toBe(after);
+    } finally {
+      ctx.restore();
+    }
+  });
+
   it("navigates to favorites with 'f' key", () => {
     const html = renderHome({ entries, feeds: [feed] });
     const ctx = mountHtmlDocument(html);
