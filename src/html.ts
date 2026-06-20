@@ -192,6 +192,70 @@ export function renderHome(params: {
         z-index: 20;
       }
 
+      .header-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.5rem;
+        flex-shrink: 0;
+      }
+
+      .mode-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .mode-toggle input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .mode-toggle-icon {
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1;
+      }
+
+      .mode-toggle-track {
+        position: relative;
+        width: 38px;
+        height: 22px;
+        background: var(--border);
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        transition: background 0.25s ease, border-color 0.25s ease;
+      }
+
+      .mode-toggle:has(input:checked) .mode-toggle-track {
+        background: var(--accent);
+        border-color: var(--accent-strong);
+      }
+
+      .mode-toggle-thumb {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        transition: transform 0.25s ease;
+      }
+
+      .mode-toggle:has(input:checked) .mode-toggle-thumb {
+        transform: translateX(16px);
+      }
+
+      .mode-toggle:focus-within .mode-toggle-track {
+        box-shadow: 0 0 0 2px var(--accent);
+      }
+
       .brand {
         display: inline-flex;
         gap: 0.75rem;
@@ -956,6 +1020,17 @@ export function renderHome(params: {
         }
       }
     </style>
+    <script>
+      // Apply saved light/dark override before first paint to avoid a flash.
+      (function () {
+        try {
+          var mode = localStorage.getItem("seymour-mode");
+          if (mode === "light" || mode === "dark") {
+            document.documentElement.style.colorScheme = mode;
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <header>
@@ -966,7 +1041,17 @@ export function renderHome(params: {
           <p class="muted">Press <kbd>?</kbd> to see keyboard shortcuts.</p>
         </div>
       </div>
-      <button type="button" data-open-settings aria-label="Open settings">Settings</button>
+      <div class="header-actions">
+        <button type="button" data-open-settings aria-label="Open settings">Settings</button>
+        <label class="mode-toggle" title="Toggle light/dark mode">
+          <span class="mode-toggle-icon" aria-hidden="true">☀</span>
+          <span class="mode-toggle-track">
+            <span class="mode-toggle-thumb"></span>
+          </span>
+          <span class="mode-toggle-icon" aria-hidden="true">☾</span>
+          <input type="checkbox" id="mode-toggle-input" aria-label="Dark mode" />
+        </label>
+      </div>
     </header>
     <div class="settings-overlay" data-settings-overlay hidden>
       <div class="settings-panel" role="dialog" aria-modal="true" aria-label="Settings" tabindex="-1">
@@ -1880,6 +1965,51 @@ export function renderHome(params: {
               }
             });
           }
+        })();
+
+        // Light/dark mode toggle: overrides the OS preference when set,
+        // otherwise follows it (auto).
+        (() => {
+          const input = document.getElementById("mode-toggle-input");
+          if (!(input instanceof HTMLInputElement)) return;
+
+          const root = document.documentElement;
+          const prefersDark =
+            typeof window.matchMedia === "function"
+              ? window.matchMedia("(prefers-color-scheme: dark)")
+              : { matches: false, addEventListener() {} };
+
+          const getSavedMode = () => {
+            try {
+              const mode = localStorage.getItem("seymour-mode");
+              return mode === "light" || mode === "dark" ? mode : null;
+            } catch (e) {
+              return null;
+            }
+          };
+
+          const syncThumb = () => {
+            const saved = getSavedMode();
+            input.checked = saved ? saved === "dark" : prefersDark.matches;
+          };
+
+          // Reflect the current effective mode in the slider position.
+          syncThumb();
+
+          input.addEventListener("change", () => {
+            const mode = input.checked ? "dark" : "light";
+            root.style.colorScheme = mode;
+            try {
+              localStorage.setItem("seymour-mode", mode);
+            } catch (e) {
+              // Ignore localStorage errors
+            }
+          });
+
+          // While in auto mode, keep the slider in step with the OS.
+          prefersDark.addEventListener("change", () => {
+            if (!getSavedMode()) syncThumb();
+          });
         })();
 
         // Zen mode: hide unread counts for a more tranquil reading experience.
